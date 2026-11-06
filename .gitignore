@@ -1,0 +1,17 @@
+# Entorno
+.env
+*.log
+
+# Backend (Maven)
+backend/**/target/
+!backend/.mvn/wrapper/maven-wrapper.jar
+
+# IDEs
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+
+# El frontend tiene su propio .gitignore (node_modules, dist, .angular)
