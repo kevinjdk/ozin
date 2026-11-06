@@ -41,6 +41,7 @@ ozin:
     max-failed-logins: 5
     failed-login-window: 15m
     allowed-origins: ${OZIN_ALLOWED_ORIGINS:http://localhost:4200}
+    refresh-cookie-secure: ${OZIN_COOKIE_SECURE:true}
     admin-email: ${OZIN_ADMIN_EMAIL:}
     admin-password: ${OZIN_ADMIN_PASSWORD:}
 

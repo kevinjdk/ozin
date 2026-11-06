@@ -16,6 +16,7 @@ import java.util.List;
  * es preferible fallar al inicio que ejecutarse con una clave conocida.
  *
  * @param jwtSecret     clave de firma HS256; al menos 32 caracteres
+ * @param refreshCookieSecure si la cookie de sesión solo viaja por HTTPS; desactivar únicamente en desarrollo
  * @param adminEmail    administrador inicial; si está vacío no se crea ninguno
  * @param adminPassword contraseña del administrador inicial
  */
@@ -30,6 +31,7 @@ public record SecurityProperties(
         @Min(1) int maxFailedLogins,
         @NotNull Duration failedLoginWindow,
         @NotEmpty List<String> allowedOrigins,
+        boolean refreshCookieSecure,
         String adminEmail,
         String adminPassword) {
 
