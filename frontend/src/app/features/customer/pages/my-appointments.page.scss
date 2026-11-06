@@ -1,0 +1,43 @@
+.list {
+  display: grid;
+  gap: 0.75rem;
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+}
+
+.appointment {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+}
+
+.appointment__main {
+  flex: 1 1 16rem;
+
+  h2 {
+    font-size: 1.25rem;
+    margin-bottom: 0.25rem;
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+.appointment__when::first-letter {
+  text-transform: uppercase;
+}
+
+.appointment__side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.appointment__hint {
+  max-width: 14rem;
+  text-align: right;
+}

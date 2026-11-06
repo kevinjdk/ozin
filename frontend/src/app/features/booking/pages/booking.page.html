@@ -1,0 +1,133 @@
+<div class="page booking">
+  @if (booked(); as appointment) {
+    <section class="panel done" aria-live="polite">
+      <i class="pi pi-check-circle done__icon" aria-hidden="true"></i>
+      <h1>¡Tu cita está reservada!</h1>
+      <p>{{ bookedDay(appointment) }}, a las {{ time(appointment.start) }}.</p>
+      <p class="muted">Total: {{ money(appointment.price, appointment.currency) }}</p>
+      <div class="form__actions done__actions">
+        <p-button label="Reservar otra" severity="secondary" (onClick)="startOver()" />
+        <p-button label="Ver mis citas" routerLink="/mis-citas" />
+      </div>
+    </section>
+  } @else {
+    <header class="page__header"><h1>Reserva tu cita</h1></header>
+
+    <ol class="progress" aria-label="Pasos de la reserva">
+      @for (step of steps; track step.id; let index = $index) {
+        <li [class.is-current]="index === stepIndex()" [class.is-done]="index < stepIndex()"
+            [attr.aria-current]="index === stepIndex() ? 'step' : null">
+          <span class="progress__dot">{{ index + 1 }}</span>
+          <span class="progress__label">{{ step.label }}</span>
+        </li>
+      }
+    </ol>
+
+    @if (loadError()) {
+      <p-message severity="error">{{ loadError()! }}</p-message>
+    }
+
+    @switch (draft.step()) {
+      @case ('service') {
+        <section aria-labelledby="paso-servicio">
+          <h2 id="paso-servicio" class="booking__title">¿Qué te vas a hacer?</h2>
+          @if (services(); as list) {
+            @if (list.length === 0) {
+              <p class="empty-state">Todavía no hay servicios disponibles.</p>
+            }
+            <div class="choices">
+              @for (service of list; track service.id) {
+                <button type="button" class="choice" (click)="draft.chooseService(service)">
+                  <span class="choice__title">{{ service.name }}</span>
+                  <span class="choice__meta">{{ service.durationMinutes }} min · {{ money(service.price, service.currency) }}</span>
+                </button>
+              }
+            </div>
+          } @else if (!loadError()) {
+            <div class="choices" aria-hidden="true">
+              @for (row of [1, 2, 3]; track row) {
+                <p-skeleton height="4.5rem" />
+              }
+            </div>
+          }
+        </section>
+      }
+
+      @case ('stylist') {
+        <section aria-labelledby="paso-estilista">
+          <h2 id="paso-estilista" class="booking__title">¿Quién te atiende?</h2>
+          @if (stylists(); as list) {
+            @if (list.length === 0) {
+              <p class="empty-state">Por ahora nadie realiza este servicio. Prueba con otro.</p>
+            }
+            <div class="choices">
+              @for (stylist of list; track stylist.id) {
+                <button type="button" class="choice" (click)="draft.chooseStylist(stylist)">
+                  <span class="choice__title">{{ stylist.fullName }}</span>
+                </button>
+              }
+            </div>
+          } @else if (!loadError()) {
+            <div class="choices" aria-hidden="true">
+              <p-skeleton height="4.5rem" />
+              <p-skeleton height="4.5rem" />
+            </div>
+          }
+        </section>
+      }
+
+      @case ('slot') {
+        <section aria-labelledby="paso-horario">
+          <h2 id="paso-horario" class="booking__title">Elige el día y la hora</h2>
+          <div class="schedule">
+            <p-datepicker [inline]="true" [ngModel]="pickerDate()" (ngModelChange)="onDatePicked($event)"
+                          [minDate]="minDate" [maxDate]="maxDate" ariaLabel="Fecha de la cita" />
+            <div class="schedule__slots" aria-live="polite">
+              @if (slots(); as list) {
+                @if (list.length === 0) {
+                  <p class="empty-state">No hay horarios libres ese día. Prueba con otra fecha.</p>
+                }
+                <div class="slots">
+                  @for (slot of list; track slot.start) {
+                    <button type="button" class="slot" (click)="draft.chooseSlot(slot)">{{ time(slot.start) }}</button>
+                  }
+                </div>
+              } @else if (!loadError()) {
+                <p-skeleton height="8rem" />
+              }
+            </div>
+          </div>
+        </section>
+      }
+
+      @case ('confirm') {
+        <section class="panel summary" aria-labelledby="paso-confirmar">
+          <h2 id="paso-confirmar" class="booking__title">Revisa tu cita</h2>
+          <dl>
+            <dt>Servicio</dt>
+            <dd>{{ draft.service()?.name }}</dd>
+            <dt>Estilista</dt>
+            <dd>{{ draft.stylist()?.fullName }}</dd>
+            <dt>Cuándo</dt>
+            <dd>{{ selectedDayLabel() }}, {{ time(draft.slot()!.start) }} a {{ time(draft.slot()!.end) }}</dd>
+            <dt>Precio</dt>
+            <dd>{{ money(draft.service()!.price, draft.service()!.currency) }}</dd>
+          </dl>
+          <p class="muted summary__note">Puedes cancelar hasta 24 horas antes de la cita.</p>
+
+          @if (auth.isAuthenticated() && auth.role() !== 'CUSTOMER') {
+            <p-message severity="warn">Solo las cuentas de cliente pueden reservar.</p-message>
+          } @else {
+            <p-button [label]="auth.isAuthenticated() ? 'Confirmar reserva' : 'Inicia sesión para confirmar'"
+                      [loading]="booking()" [fluid]="true" (onClick)="confirm()" />
+          }
+        </section>
+      }
+    }
+
+    @if (draft.step() !== 'service') {
+      <p-button class="booking__back" label="Volver" icon="pi pi-arrow-left" severity="secondary" [text]="true"
+                (onClick)="draft.back()" />
+    }
+  }
+</div>

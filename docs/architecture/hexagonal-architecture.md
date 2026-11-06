@@ -105,14 +105,15 @@ com.ozin.infrastructure.config / security
 
 ```
 frontend/src/app/
-├── core/        interceptors, guards, autenticación, layout (singletons)
-├── shared/      componentes UI reutilizables, pipes, utilidades
+├── core/        API, autenticación, interceptor, guards, errores, hora de la sede (singletons)
+├── shared/      agenda y componentes UI reutilizados por varias features
 └── features/
-    ├── booking/   flujo público de reserva
+    ├── home/      portada y catálogo
+    ├── auth/      inicio de sesión y registro
+    ├── booking/   flujo de reserva
     ├── customer/  mis citas
     ├── stylist/   agenda del estilista
     └── admin/     catálogo, estilistas, horarios, agenda general
-        ├── data-access/  servicios HTTP y estado (signals)
-        ├── ui/           componentes presentacionales
-        └── pages/        componentes contenedores (rutas lazy)
+        ├── data-access/  estado propio de la feature (signals)
+        └── pages/        pantallas (rutas lazy)
 ```
