@@ -1,0 +1,158 @@
+<div class="page">
+  <header class="page__header">
+    <div>
+      <h1>Estilistas</h1>
+      <p>Dar de baja a un estilista le quita el acceso, pero conserva sus citas.</p>
+    </div>
+    <p-button label="Nuevo estilista" icon="pi pi-plus" (onClick)="openCreate()" />
+  </header>
+
+  @if (stylists(); as list) {
+    <div class="panel table-stack">
+      <p-table [value]="list" dataKey="id">
+        <ng-template #header>
+          <tr>
+            <th>Nombre</th>
+            <th>Servicios</th>
+            <th>Estado</th>
+            <th><span class="sr-only">Acciones</span></th>
+          </tr>
+        </ng-template>
+        <ng-template #body let-stylist>
+          <tr>
+            <td>{{ stylist.fullName }}</td>
+            <td>{{ serviceNames(stylist) }}</td>
+            <td>
+              <p-tag [value]="stylist.active ? 'Activo' : 'De baja'" [severity]="stylist.active ? 'success' : 'secondary'" />
+            </td>
+            <td class="table-actions">
+              <p-button label="Ausencias" size="small" severity="secondary" [text]="true"
+                        [ariaLabel]="'Ausencias de ' + stylist.fullName" (onClick)="openTimeOff(stylist)" />
+              <p-button label="Editar" size="small" severity="secondary" [outlined]="true"
+                        [ariaLabel]="'Editar ' + stylist.fullName" (onClick)="openEdit(stylist)" />
+            </td>
+          </tr>
+        </ng-template>
+        <ng-template #emptymessage>
+          <tr><td colspan="4" class="muted">Crea el primer estilista para poder recibir reservas.</td></tr>
+        </ng-template>
+      </p-table>
+    </div>
+  } @else if (error()) {
+    <div class="panel empty-state" role="alert">
+      <p>{{ error() }}</p>
+      <p-button label="Reintentar" severity="secondary" (onClick)="load()" />
+    </div>
+  } @else {
+    <p-skeleton height="12rem" />
+  }
+</div>
+
+<p-dialog [visible]="dialogOpen()" (visibleChange)="dialogOpen.set($event)" [modal]="true"
+          [header]="editing() ? 'Editar estilista' : 'Nuevo estilista'" [style]="{ width: 'min(34rem, 94vw)' }">
+  <form class="form" [formGroup]="form" (ngSubmit)="save()" novalidate>
+    <div class="field">
+      <label for="stylist-name">Nombre completo</label>
+      <input pInputText id="stylist-name" formControlName="fullName" />
+      @if (form.controls.fullName.touched && form.controls.fullName.invalid) {
+        <small class="field__error">Escribe el nombre.</small>
+      }
+    </div>
+
+    @if (!editing()) {
+      <div class="field">
+        <label for="stylist-email">Email de acceso</label>
+        <input pInputText id="stylist-email" type="email" autocomplete="off" formControlName="email" />
+        @if (form.controls.email.touched && form.controls.email.invalid) {
+          <small class="field__error">Escribe un email válido.</small>
+        }
+      </div>
+      <div class="field">
+        <label for="stylist-password">Contraseña inicial</label>
+        <p-password inputId="stylist-password" formControlName="password" [feedback]="false" [toggleMask]="true"
+                    autocomplete="new-password" [fluid]="true" />
+        @if (form.controls.password.touched && form.controls.password.invalid) {
+          <small class="field__error">Al menos 8 caracteres, una mayúscula y un número.</small>
+        }
+      </div>
+    }
+
+    <div class="field">
+      <label for="stylist-services">Servicios que realiza</label>
+      <p-multiselect inputId="stylist-services" formControlName="serviceIds" [options]="services()" optionLabel="name"
+                     optionValue="id" placeholder="Selecciona servicios" display="chip" [fluid]="true" appendTo="body" />
+    </div>
+
+    <fieldset class="hours" formArrayName="workingHours">
+      <legend>Horario semanal</legend>
+      @for (row of hours.controls; track row; let index = $index) {
+        <div class="hours__row" [formGroupName]="index">
+          <p-select formControlName="day" [options]="days" optionLabel="label" optionValue="value" appendTo="body"
+                    [ariaLabel]="'Día de la franja ' + (index + 1)" />
+          <input pInputText type="time" formControlName="start" [attr.aria-label]="'Inicio de la franja ' + (index + 1)" />
+          <input pInputText type="time" formControlName="end" [attr.aria-label]="'Fin de la franja ' + (index + 1)" />
+          <p-button icon="pi pi-times" severity="secondary" [text]="true"
+                    [ariaLabel]="'Quitar franja ' + (index + 1)" (onClick)="removeHours(index)" />
+        </div>
+      } @empty {
+        <p class="muted hours__empty">Sin horario no recibirá reservas. Agrega una franja por cada tramo, por ejemplo mañana y tarde.</p>
+      }
+      <p-button label="Agregar franja" icon="pi pi-plus" size="small" severity="secondary" [outlined]="true" (onClick)="addHours()" />
+    </fieldset>
+
+    @if (editing()) {
+      <div class="field">
+        <label for="stylist-active">Activo</label>
+        <p-toggleswitch inputId="stylist-active" formControlName="active" />
+      </div>
+    }
+
+    <div class="form__actions">
+      <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="dialogOpen.set(false)" />
+      <p-button type="submit" label="Guardar" [loading]="saving()" />
+    </div>
+  </form>
+</p-dialog>
+
+<p-dialog [visible]="timeOffOpen()" (visibleChange)="$event ? null : timeOffFor.set(null)" [modal]="true"
+          [header]="'Ausencias de ' + (timeOffFor()?.fullName ?? '')" [style]="{ width: 'min(30rem, 94vw)' }">
+  @if (timeOffFor(); as stylist) {
+    @if (stylist.timeOffs.length > 0) {
+      <ul class="time-offs">
+        @for (off of stylist.timeOffs; track off.start) {
+          <li>
+            <span>{{ timeOffRange(off.start, off.end) }}</span>
+            @if (off.reason) {
+              <small class="muted">{{ off.reason }}</small>
+            }
+          </li>
+        }
+      </ul>
+    }
+    <p class="muted time-offs__note">Registrar una ausencia bloquea nuevas reservas, pero no cancela las citas que ya existan: revísalas en la agenda.</p>
+    <form class="form" [formGroup]="timeOffForm" (ngSubmit)="saveTimeOff()" novalidate>
+      <div class="field">
+        <label for="off-start">Desde</label>
+        <input pInputText id="off-start" type="datetime-local" formControlName="start" />
+        @if (timeOffForm.controls.start.touched && timeOffForm.controls.start.invalid) {
+          <small class="field__error">Indica el inicio.</small>
+        }
+      </div>
+      <div class="field">
+        <label for="off-end">Hasta</label>
+        <input pInputText id="off-end" type="datetime-local" formControlName="end" />
+        @if (timeOffForm.controls.end.touched && timeOffForm.controls.end.invalid) {
+          <small class="field__error">Indica el fin.</small>
+        }
+      </div>
+      <div class="field">
+        <label for="off-reason">Motivo (opcional)</label>
+        <input pInputText id="off-reason" formControlName="reason" />
+      </div>
+      <div class="form__actions">
+        <p-button label="Cerrar" severity="secondary" [text]="true" (onClick)="timeOffFor.set(null)" />
+        <p-button type="submit" label="Registrar ausencia" [loading]="saving()" />
+      </div>
+    </form>
+  }
+</p-dialog>

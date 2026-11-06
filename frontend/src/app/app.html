@@ -1,1 +1,33 @@
-<router-outlet />
+<a class="skip-link" href="#contenido">Saltar al contenido</a>
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <a class="brand" routerLink="/" aria-label="Ozin, ir al inicio">Ozin</a>
+
+    <nav class="topbar__nav" aria-label="Principal">
+      @for (link of links(); track link.path) {
+        <a [routerLink]="link.path" routerLinkActive="is-active">{{ link.label }}</a>
+      }
+    </nav>
+
+    <div class="topbar__actions">
+      @if (auth.isAuthenticated()) {
+        <p-button label="Salir" severity="secondary" [text]="true" (onClick)="logout()" />
+      } @else {
+        <a class="topbar__login" routerLink="/ingresar">Ingresar</a>
+      }
+    </div>
+  </div>
+</header>
+
+<main id="contenido" class="content">
+  <router-outlet />
+</main>
+
+<footer class="footer">
+  <span>{{ salon.branch()?.name ?? 'Ozin' }}</span>
+  <a href="https://github.com/kevinjdk/ozin" rel="noopener" target="_blank">Código en GitHub</a>
+</footer>
+
+<p-toast position="bottom-right" />
+<p-confirmdialog />

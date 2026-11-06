@@ -1,9 +1,193 @@
 @use 'primeicons/primeicons.css';
 
+:root {
+  --ozin-canvas: #faf7f4;
+  --ozin-paper: #ffffff;
+  --ozin-ink: #2a1f1d;
+  --ozin-muted: #6f625d;
+  --ozin-line: #e8e0da;
+  --ozin-blush: #f7e7e6;
+  --ozin-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --ozin-body: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --ozin-page-width: 68rem;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 html,
 body {
   margin: 0;
-  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  background: var(--p-surface-50);
-  color: var(--p-text-color);
+  background: var(--ozin-canvas);
+  color: var(--ozin-ink);
+  font-family: var(--ozin-body);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--ozin-display);
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+  margin: 0;
+}
+
+/* ---- Estructura de página ---- */
+
+.page {
+  max-width: var(--ozin-page-width);
+  margin: 0 auto;
+  padding: 2rem 1rem 3rem;
+}
+
+.page--narrow {
+  max-width: 28rem;
+}
+
+.page__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+  margin-bottom: 1.5rem;
+
+  h1 {
+    font-size: clamp(1.75rem, 4vw, 2.25rem);
+  }
+
+  p {
+    margin: 0.25rem 0 0;
+    color: var(--ozin-muted);
+  }
+}
+
+.panel {
+  background: var(--ozin-paper);
+  border: 1px solid var(--ozin-line);
+  border-radius: 0.875rem;
+  padding: 1.25rem;
+}
+
+.muted {
+  color: var(--ozin-muted);
+}
+
+.empty-state {
+  padding: 2.5rem 1rem;
+  text-align: center;
+  color: var(--ozin-muted);
+
+  p {
+    margin: 0 0 1rem;
+  }
+}
+
+/* ---- Formularios ---- */
+
+.form {
+  display: grid;
+  gap: 1rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.375rem;
+
+  label {
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  input,
+  .p-password,
+  .p-select,
+  .p-multiselect,
+  .p-inputnumber {
+    width: 100%;
+  }
+}
+
+.field__hint {
+  font-size: 0.8125rem;
+  color: var(--ozin-muted);
+}
+
+.field__error {
+  font-size: 0.8125rem;
+  color: var(--p-red-700);
+}
+
+.form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.form__alt {
+  margin: 1.25rem 0 0;
+  text-align: center;
+  font-size: 0.9375rem;
+  color: var(--ozin-muted);
+
+  a {
+    color: var(--p-primary-color);
+    font-weight: 600;
+  }
+}
+
+/* ---- Tablas: en pantallas estrechas cada fila se apila, para que las acciones no queden fuera de la vista ---- */
+
+.table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.25rem;
+}
+
+@media (max-width: 40rem) {
+  .table-stack {
+    padding-block: 0.25rem;
+
+    thead {
+      display: none;
+    }
+
+    tr {
+      display: grid;
+      gap: 0.25rem;
+      padding-block: 0.75rem;
+    }
+
+    tr + tr {
+      border-top: 1px solid var(--ozin-line);
+    }
+
+    td {
+      padding: 0 !important;
+      border: 0 !important;
+    }
+
+    .table-actions {
+      justify-content: flex-start;
+      margin-top: 0.25rem;
+    }
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
