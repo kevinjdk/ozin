@@ -84,7 +84,10 @@ com.ozin.infrastructure.config / security
 | Situación | HTTP |
 |---|---|
 | Datos inválidos | 400 |
+| Sin sesión, token inválido o credenciales incorrectas | 401 |
+| Sin permiso sobre la ruta o sobre el recurso | 403 |
 | Recurso inexistente | 404 |
+| Demasiados intentos de inicio de sesión | 429 |
 | Horario ocupado (RN-01), email repetido, transición de estado inválida, modificación concurrente | 409 |
 | Otra regla de negocio incumplida (RN-02 a RN-08) | 422 |
 
