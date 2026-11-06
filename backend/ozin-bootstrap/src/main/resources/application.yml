@@ -31,6 +31,19 @@ management:
       probes:
         enabled: true
 
+ozin:
+  security:
+    jwt-secret: ${OZIN_JWT_SECRET}                # Obligatorio y sin valor por defecto, a propósito
+    issuer: ozin-api
+    access-token-ttl: 15m
+    refresh-token-ttl: 7d
+    bcrypt-strength: 12
+    max-failed-logins: 5
+    failed-login-window: 15m
+    allowed-origins: ${OZIN_ALLOWED_ORIGINS:http://localhost:4200}
+    admin-email: ${OZIN_ADMIN_EMAIL:}
+    admin-password: ${OZIN_ADMIN_PASSWORD:}
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html

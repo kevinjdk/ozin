@@ -37,7 +37,7 @@ class BookingConcurrencyTests extends ApiTestSupport {
     private SaveAppointmentPort saveAppointments;
 
     private String haircut;
-    private String ana;
+    private TestStylist ana;
 
     @BeforeEach
     void givenASalon() throws Exception {
@@ -64,8 +64,8 @@ class BookingConcurrencyTests extends ApiTestSupport {
         }
     }
 
-    private Callable<Integer> bookingOf(String customer, String localStart) {
-        return () -> book(customer, ana, haircut, localStart).andReturn().getResponse().getStatus();
+    private Callable<Integer> bookingOf(TestCustomer customer, String localStart) {
+        return () -> book(customer, ana.id(), haircut, localStart).andReturn().getResponse().getStatus();
     }
 
     private Integer activeAppointments() {
@@ -88,7 +88,7 @@ class BookingConcurrencyTests extends ApiTestSupport {
 
     @Test
     void rn08_simultaneousBookingsOfACustomerCannotExceedTheLimit() throws Exception {
-        String customer = createCustomer();
+        TestCustomer customer = createCustomer();
         List<Callable<Integer>> requests = List.of(
                 bookingOf(customer, MONDAY + "T09:00"),
                 bookingOf(customer, MONDAY + "T10:00"),
@@ -106,12 +106,11 @@ class BookingConcurrencyTests extends ApiTestSupport {
 
     @Test
     void rn01_theDatabaseRejectsAnOverlapThatSkippedTheDomainValidation() throws Exception {
-        String firstCustomer = createCustomer();
-        createdId(book(firstCustomer, ana, haircut, MONDAY + "T10:00"));
+        createdId(book(createCustomer(), ana.id(), haircut, MONDAY + "T10:00"));
 
         // restore() simula una transacción simultánea que validó antes de que existiera la primera cita.
         Appointment overlapping = Appointment.restore(AppointmentId.newId(),
-                CustomerId.of(UUID.fromString(createCustomer())), StylistId.of(UUID.fromString(ana)),
+                CustomerId.of(UUID.fromString(createCustomer().id())), StylistId.of(UUID.fromString(ana.id())),
                 SalonServiceId.of(UUID.fromString(haircut)),
                 BranchId.of(UUID.fromString(DEFAULT_BRANCH)),
                 TimeSlot.of(at(MONDAY + "T10:30"), Duration.ofMinutes(45)),

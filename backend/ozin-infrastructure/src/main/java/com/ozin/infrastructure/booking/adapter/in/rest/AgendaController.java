@@ -10,11 +10,14 @@ import com.ozin.application.shared.PageQuery;
 import com.ozin.application.shared.PageResult;
 import com.ozin.domain.branch.BranchId;
 import com.ozin.domain.catalog.SalonServiceId;
-import com.ozin.domain.customer.CustomerId;
 import com.ozin.domain.staff.StylistId;
+import com.ozin.infrastructure.shared.adapter.in.rest.CurrentActor;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -62,8 +65,9 @@ class AgendaController {
     @Operation(summary = "Agenda de un estilista en un rango de hasta 31 días")
     List<AppointmentView> stylistAgenda(@PathVariable UUID stylistId,
                                         @RequestParam Instant from,
-                                        @RequestParam Instant to) {
-        return getStylistAgenda.getAgenda(StylistId.of(stylistId), new AgendaRange(from, to));
+                                        @RequestParam Instant to,
+                                        @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
+        return getStylistAgenda.getAgenda(StylistId.of(stylistId), CurrentActor.from(jwt), new AgendaRange(from, to));
     }
 
     @GetMapping("/branches/{branchId}/agenda")
@@ -74,12 +78,12 @@ class AgendaController {
         return getBranchAgenda.getAgenda(BranchId.of(branchId), new AgendaRange(from, to));
     }
 
-    @GetMapping("/customers/{customerId}/appointments")
-    @Operation(summary = "Citas de un cliente, de la más reciente a la más antigua")
-    PageResult<AppointmentView> customerAppointments(@PathVariable UUID customerId,
-                                                     @RequestParam(defaultValue = "0") int page,
-                                                     @RequestParam(defaultValue = "20") int size) {
-        return listCustomerAppointments.list(CustomerId.of(customerId), new PageQuery(page, size));
+    @GetMapping("/customers/me/appointments")
+    @Operation(summary = "Citas del cliente autenticado, de la más reciente a la más antigua")
+    PageResult<AppointmentView> myAppointments(@RequestParam(defaultValue = "0") int page,
+                                               @RequestParam(defaultValue = "20") int size,
+                                               @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
+        return listCustomerAppointments.list(CurrentActor.from(jwt).customerId(), new PageQuery(page, size));
     }
 
     record SlotResponse(Instant start, Instant end) {

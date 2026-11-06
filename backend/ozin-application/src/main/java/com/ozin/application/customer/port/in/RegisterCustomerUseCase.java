@@ -3,12 +3,13 @@ package com.ozin.application.customer.port.in;
 import com.ozin.domain.customer.Customer;
 import com.ozin.domain.customer.Email;
 import com.ozin.domain.customer.PhoneNumber;
+import com.ozin.domain.identity.RawPassword;
 
-/** Alta de cliente. En la Fase 4 se integrará con el registro de usuario (HU-06). */
+/** HU-06: crea el cliente junto con sus credenciales de acceso. */
 public interface RegisterCustomerUseCase {
 
     Customer register(Command command);
 
-    record Command(String fullName, Email email, PhoneNumber phone) {
+    record Command(String fullName, Email email, PhoneNumber phone, RawPassword password) {
     }
 }

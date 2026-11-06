@@ -4,7 +4,6 @@ import com.ozin.application.customer.port.out.LoadCustomerPort;
 import com.ozin.application.customer.port.out.SaveCustomerPort;
 import com.ozin.domain.customer.Customer;
 import com.ozin.domain.customer.CustomerId;
-import com.ozin.domain.customer.Email;
 import com.ozin.domain.shared.BusinessRuleViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
@@ -23,11 +22,6 @@ class CustomerPersistenceAdapter implements LoadCustomerPort, SaveCustomerPort {
     @Override
     public boolean existsById(CustomerId id) {
         return repository.existsById(id.value());
-    }
-
-    @Override
-    public boolean existsByEmail(Email email) {
-        return repository.existsByEmail(email.value());
     }
 
     @Override

@@ -22,7 +22,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -49,9 +48,15 @@ class SalonServiceController {
     }
 
     @GetMapping
-    @Operation(summary = "Lista los servicios del catálogo")
-    List<SalonServiceResponse> list(@RequestParam(defaultValue = "false") boolean includeInactive) {
-        return listServices.list(includeInactive).stream().map(SalonServiceResponse::from).toList();
+    @Operation(summary = "Lista los servicios activos del catálogo")
+    List<SalonServiceResponse> list() {
+        return listServices.list(false).stream().map(SalonServiceResponse::from).toList();
+    }
+
+    @GetMapping("/manage")
+    @Operation(summary = "Lista todos los servicios, incluidos los inactivos")
+    List<SalonServiceResponse> listForManagement() {
+        return listServices.list(true).stream().map(SalonServiceResponse::from).toList();
     }
 
     @PostMapping

@@ -12,8 +12,17 @@ y a los administradores controlar servicios, horarios y estilistas.
 El proyecto está construido con **arquitectura hexagonal**, **principios SOLID** y **TDD**, con foco en la
 calidad, la seguridad y la mantenibilidad propias de un sistema empresarial.
 
-> 🚧 En desarrollo. Ver la [hoja de ruta](#hoja-de-ruta). La API todavía no tiene autenticación (llega en la
-> Fase 4) y las notificaciones solo se registran en el log, por lo que aún no debe exponerse públicamente.
+> 🚧 En desarrollo. Ver la [hoja de ruta](#hoja-de-ruta). Las notificaciones todavía solo se registran en el log.
+
+## Seguridad
+
+- Autenticación con JWT de corta duración y refresh tokens rotativos con detección de reutilización.
+- Autorización por rol en cada ruta y por propietario en cada recurso, con denegación por defecto.
+- Contraseñas con BCrypt, límite de intentos de inicio de sesión y respuestas que no revelan qué cuentas existen.
+- Sin credenciales en el repositorio: sin `OZIN_JWT_SECRET` la aplicación no arranca.
+
+Las decisiones están en el [ADR-0004](docs/adr/0004-autenticacion-jwt.md) y se comprueban en
+[SecurityApiTests](backend/ozin-bootstrap/src/test/java/com/ozin/SecurityApiTests.java).
 
 ## Stack
 
@@ -56,6 +65,9 @@ y **en los tests** (ArchUnit).
 docker compose up -d
 
 # 2. Backend  →  http://localhost:8080/swagger-ui.html
+export OZIN_JWT_SECRET=$(openssl rand -base64 48)    # Obligatorio
+export OZIN_ADMIN_EMAIL=admin@example.com            # Administrador inicial (opcional)
+export OZIN_ADMIN_PASSWORD='elige-una-Clave1'
 cd backend
 ./mvnw -DskipTests package
 java -jar ozin-bootstrap/target/ozin-api.jar
@@ -79,7 +91,7 @@ cd frontend && npm run test:ci
 - [x] **Fase 1:** monorepo, Maven multimódulo, Angular + PrimeNG, Docker y CI
 - [x] **Fase 2:** dominio de reservas con TDD
 - [x] **Fase 3:** persistencia (JPA + Flyway) y API REST
-- [ ] **Fase 4:** seguridad (JWT, roles)
+- [x] **Fase 4:** seguridad (JWT, roles)
 - [ ] **Fase 5:** frontend (reserva, panel de cliente, estilista y admin)
 - [ ] **Fase 6:** despliegue y SonarCloud
 

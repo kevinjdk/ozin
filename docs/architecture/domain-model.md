@@ -18,8 +18,9 @@
 
 ```mermaid
 erDiagram
-    USER ||--o| CUSTOMER : "es"
-    USER ||--o| STYLIST : "es"
+    USER |o--o| CUSTOMER : "accede como"
+    USER |o--o| STYLIST : "accede como"
+    USER ||--o{ REFRESH_TOKEN : "tiene"
     BRANCH ||--o{ STYLIST : "emplea"
     STYLIST }o--o{ SALON_SERVICE : "realiza"
     STYLIST ||--o{ WORKING_HOURS : "tiene"
@@ -29,7 +30,8 @@ erDiagram
     SALON_SERVICE ||--o{ APPOINTMENT : "incluye"
     BRANCH ||--o{ APPOINTMENT : "registra"
 
-    USER { uuid id string email string passwordHash string role boolean enabled }
+    USER { uuid id string email string passwordHash string role uuid customerId uuid stylistId boolean enabled }
+    REFRESH_TOKEN { uuid id uuid userId uuid familyId string tokenHash timestamptz expiresAt timestamptz revokedAt }
     BRANCH { uuid id string name string address string timeZone boolean active }
     CUSTOMER { uuid id string fullName string email string phone }
     STYLIST { uuid id uuid branchId string fullName boolean active }
@@ -39,8 +41,8 @@ erDiagram
     APPOINTMENT { uuid id uuid customerId uuid stylistId uuid serviceId uuid branchId timestamptz startsAt timestamptz endsAt decimal price string currency string status string cancelledBy bigint version }
 ```
 
-> `USER` y sus relaciones se implementan en la Fase 4. `WORKING_HOURS` y `TIME_OFF` son value objects
-> del estilista, por lo que no tienen identificador propio.
+> `USER` se guarda en la tabla `app_user` y apunta a su perfil; el administrador no tiene perfil.
+> `WORKING_HOURS` y `TIME_OFF` son value objects del estilista, por lo que no tienen identificador propio.
 
 ## Value objects
 

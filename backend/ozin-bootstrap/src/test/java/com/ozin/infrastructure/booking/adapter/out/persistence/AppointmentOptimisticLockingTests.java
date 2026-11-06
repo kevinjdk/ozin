@@ -20,7 +20,7 @@ class AppointmentOptimisticLockingTests extends ApiTestSupport {
     @Test
     void rejectsSavingAStaleCopyOfAnAppointment() throws Exception {
         String haircut = createService("Corte", 45, "12.00");
-        String ana = createStylist(haircut);
+        String ana = createStylist(haircut).id();
         UUID id = UUID.fromString(createdId(book(createCustomer(), ana, haircut, "2026-11-09T10:00")));
 
         AppointmentJpaEntity first = repository.findById(id).orElseThrow();

@@ -6,6 +6,7 @@ import com.ozin.application.booking.port.out.SaveAppointmentPort;
 import com.ozin.application.shared.port.out.UnitOfWork;
 import com.ozin.domain.booking.Appointment;
 import com.ozin.domain.booking.AppointmentId;
+import com.ozin.domain.identity.Actor;
 import com.ozin.domain.shared.ResourceNotFoundException;
 
 import java.time.Clock;
@@ -28,10 +29,11 @@ public final class MarkAppointmentNoShowService implements MarkAppointmentNoShow
     }
 
     @Override
-    public Appointment markNoShow(AppointmentId id) {
+    public Appointment markNoShow(AppointmentId id, Actor actor) {
         return unitOfWork.inTransaction(() -> {
             Appointment appointment = loadAppointments.findById(id)
                     .orElseThrow(() -> new ResourceNotFoundException("Cita", id.value()));
+            appointment.ensureManageableBy(actor);
             appointment.markNoShow(clock.instant());
             saveAppointments.save(appointment);
             return appointment;

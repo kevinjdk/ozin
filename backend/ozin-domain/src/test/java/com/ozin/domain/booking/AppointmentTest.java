@@ -1,5 +1,8 @@
 package com.ozin.domain.booking;
 
+import com.ozin.domain.identity.Actor;
+import com.ozin.domain.identity.Role;
+import com.ozin.domain.shared.AccessDeniedException;
 import com.ozin.domain.shared.BusinessRuleViolationException;
 import com.ozin.domain.shared.InvalidStateTransitionException;
 import org.junit.jupiter.api.Nested;
@@ -8,11 +11,13 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 import java.time.Duration;
+import java.util.UUID;
 
 import static com.ozin.domain.booking.BookingFixtures.appointment;
 import static com.ozin.domain.booking.BookingFixtures.at;
 import static com.ozin.domain.booking.BookingFixtures.stylist;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class AppointmentTest {
@@ -93,6 +98,42 @@ class AppointmentTest {
             appointment.cancel(CancellationActor.CUSTOMER, at("2026-11-09T09:59"), anytime);
 
             assertThat(appointment.status()).isEqualTo(AppointmentStatus.CANCELLED);
+        }
+    }
+
+    @Nested
+    class Authorization {
+
+        private final Appointment appointment = withStatus(AppointmentStatus.CONFIRMED);
+
+        @Test
+        void adminAndTheAppointmentsStylistCanManageIt() {
+            assertThatCode(() -> appointment.ensureManageableBy(new Actor(Role.ADMIN, null)))
+                    .doesNotThrowAnyException();
+            assertThatCode(() -> appointment.ensureManageableBy(new Actor(Role.STYLIST, appointment.stylistId().value())))
+                    .doesNotThrowAnyException();
+        }
+
+        @Test
+        void anotherStylistCannotManageIt() {
+            assertThatThrownBy(() -> appointment.ensureManageableBy(new Actor(Role.STYLIST, UUID.randomUUID())))
+                    .isInstanceOf(AccessDeniedException.class);
+        }
+
+        @Test
+        void cancellationActorDependsOnWhoAsks() {
+            assertThat(appointment.cancellationActorFor(new Actor(Role.ADMIN, null)))
+                    .isEqualTo(CancellationActor.ADMIN);
+            assertThat(appointment.cancellationActorFor(new Actor(Role.CUSTOMER, appointment.customerId().value())))
+                    .isEqualTo(CancellationActor.CUSTOMER);
+        }
+
+        @Test
+        void neitherOtherCustomersNorStylistsCanCancel() {
+            assertThatThrownBy(() -> appointment.cancellationActorFor(new Actor(Role.CUSTOMER, UUID.randomUUID())))
+                    .isInstanceOf(AccessDeniedException.class);
+            assertThatThrownBy(() -> appointment.cancellationActorFor(new Actor(Role.STYLIST, appointment.stylistId().value())))
+                    .isInstanceOf(AccessDeniedException.class);
         }
     }
 
