@@ -1,5 +1,6 @@
 package com.ozin.infrastructure.config;
 
+import com.ozin.application.identity.SessionPolicy;
 import com.ozin.domain.booking.AppointmentBooker;
 import com.ozin.domain.booking.BookingPolicy;
 import com.ozin.domain.booking.CancellationPolicy;
@@ -29,6 +30,12 @@ public class UseCaseConfig {
     @Bean
     Clock clock() {
         return Clock.systemUTC();
+    }
+
+    @Bean
+    SessionPolicy sessionPolicy(SecurityProperties properties) {
+        return new SessionPolicy(properties.refreshTokenTtl(), properties.maxFailedLogins(),
+                properties.failedLoginWindow());
     }
 
     @Bean

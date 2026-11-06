@@ -7,8 +7,8 @@ import com.ozin.application.booking.port.out.SaveAppointmentPort;
 import com.ozin.application.shared.port.out.UnitOfWork;
 import com.ozin.domain.booking.Appointment;
 import com.ozin.domain.booking.AppointmentId;
-import com.ozin.domain.booking.CancellationActor;
 import com.ozin.domain.booking.CancellationPolicy;
+import com.ozin.domain.identity.Actor;
 import com.ozin.domain.shared.ResourceNotFoundException;
 
 import java.time.Clock;
@@ -37,11 +37,11 @@ public final class CancelAppointmentService implements CancelAppointmentUseCase 
     }
 
     @Override
-    public Appointment cancel(AppointmentId id, CancellationActor actor) {
+    public Appointment cancel(AppointmentId id, Actor actor) {
         Appointment cancelled = unitOfWork.inTransaction(() -> {
             Appointment appointment = loadAppointments.findById(id)
                     .orElseThrow(() -> new ResourceNotFoundException("Cita", id.value()));
-            appointment.cancel(actor, clock.instant(), policy);
+            appointment.cancel(appointment.cancellationActorFor(actor), clock.instant(), policy);
             saveAppointments.save(appointment);
             return appointment;
         });

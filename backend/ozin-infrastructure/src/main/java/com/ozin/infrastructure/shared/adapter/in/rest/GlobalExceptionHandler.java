@@ -1,11 +1,14 @@
 package com.ozin.infrastructure.shared.adapter.in.rest;
 
 import com.ozin.domain.customer.Customer;
+import com.ozin.domain.shared.AccessDeniedException;
 import com.ozin.domain.shared.BusinessRuleViolationException;
 import com.ozin.domain.shared.DomainException;
 import com.ozin.domain.shared.DomainValidationException;
+import com.ozin.domain.shared.InvalidCredentialsException;
 import com.ozin.domain.shared.InvalidStateTransitionException;
 import com.ozin.domain.shared.ResourceNotFoundException;
+import com.ozin.domain.shared.TooManyAttemptsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -44,6 +47,21 @@ class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
     ProblemDetail handleNotFound(ResourceNotFoundException ex) {
         return problem(HttpStatus.NOT_FOUND, ex);
+    }
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    ProblemDetail handleInvalidCredentials(InvalidCredentialsException ex) {
+        return problem(HttpStatus.UNAUTHORIZED, ex);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    ProblemDetail handleAccessDenied(AccessDeniedException ex) {
+        return problem(HttpStatus.FORBIDDEN, ex);
+    }
+
+    @ExceptionHandler(TooManyAttemptsException.class)
+    ProblemDetail handleTooManyAttempts(TooManyAttemptsException ex) {
+        return problem(HttpStatus.TOO_MANY_REQUESTS, ex);
     }
 
     @ExceptionHandler(DomainValidationException.class)

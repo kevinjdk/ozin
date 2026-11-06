@@ -3,6 +3,8 @@ package com.ozin.domain.booking;
 import com.ozin.domain.branch.BranchId;
 import com.ozin.domain.catalog.SalonServiceId;
 import com.ozin.domain.customer.CustomerId;
+import com.ozin.domain.identity.Actor;
+import com.ozin.domain.shared.AccessDeniedException;
 import com.ozin.domain.shared.InvalidStateTransitionException;
 import com.ozin.domain.shared.Money;
 import com.ozin.domain.shared.TimeSlot;
@@ -86,6 +88,24 @@ public final class Appointment {
         requireStatus(AppointmentStatus.CONFIRMED, "marcar como no asistida");
         requireStarted(now, "marcar como no asistida");
         status = AppointmentStatus.NO_SHOW;
+    }
+
+    /** HU-09: solo el administrador o el estilista de la cita pueden gestionar su estado. */
+    public void ensureManageableBy(Actor actor) {
+        if (!actor.isAdmin() && !actor.isStylist(stylistId)) {
+            throw new AccessDeniedException("No puedes gestionar una cita de otro estilista");
+        }
+    }
+
+    /** RN-07: traduce quién cancela; un estilista no cancela y un cliente solo cancela sus propias citas. */
+    public CancellationActor cancellationActorFor(Actor actor) {
+        if (actor.isAdmin()) {
+            return CancellationActor.ADMIN;
+        }
+        if (actor.isCustomer(customerId)) {
+            return CancellationActor.CUSTOMER;
+        }
+        throw new AccessDeniedException("No puedes cancelar esta cita");
     }
 
     public boolean isActive() {

@@ -1,13 +1,10 @@
 package com.ozin.application.customer.port.out;
 
 import com.ozin.domain.customer.CustomerId;
-import com.ozin.domain.customer.Email;
 
 public interface LoadCustomerPort {
 
     boolean existsById(CustomerId id);
-
-    boolean existsByEmail(Email email);
 
     /**
      * Bloquea al cliente hasta el fin de la transacción y devuelve si existe.

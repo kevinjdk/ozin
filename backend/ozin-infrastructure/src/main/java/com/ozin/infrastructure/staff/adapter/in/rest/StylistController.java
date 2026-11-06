@@ -6,6 +6,8 @@ import com.ozin.application.staff.port.in.ListStylistsUseCase;
 import com.ozin.application.staff.port.in.UpdateStylistUseCase;
 import com.ozin.domain.branch.BranchId;
 import com.ozin.domain.catalog.SalonServiceId;
+import com.ozin.domain.customer.Email;
+import com.ozin.domain.identity.RawPassword;
 import com.ozin.domain.shared.TimeSlot;
 import com.ozin.domain.staff.Stylist;
 import com.ozin.domain.staff.StylistId;
@@ -59,12 +61,17 @@ class StylistController {
     }
 
     @GetMapping
-    @Operation(summary = "Lista estilistas, opcionalmente solo los que realizan un servicio")
-    List<StylistResponse> list(@RequestParam Optional<UUID> serviceId,
-                               @RequestParam(defaultValue = "false") boolean includeInactive) {
-        return listStylists.list(serviceId.map(SalonServiceId::of), includeInactive).stream()
-                .map(StylistResponse::from)
+    @Operation(summary = "Lista estilistas activos, opcionalmente solo los que realizan un servicio")
+    List<PublicStylistResponse> list(@RequestParam Optional<UUID> serviceId) {
+        return listStylists.list(serviceId.map(SalonServiceId::of), false).stream()
+                .map(PublicStylistResponse::from)
                 .toList();
+    }
+
+    @GetMapping("/manage")
+    @Operation(summary = "Lista todos los estilistas con sus horarios y ausencias")
+    List<StylistResponse> listForManagement() {
+        return listStylists.list(Optional.empty(), true).stream().map(StylistResponse::from).toList();
     }
 
     @PostMapping
@@ -72,8 +79,8 @@ class StylistController {
     @Operation(summary = "Crea un estilista con sus servicios y horario")
     StylistResponse create(@Valid @RequestBody CreateStylistRequest request) {
         return StylistResponse.from(createStylist.create(new CreateStylistUseCase.Command(
-                BranchId.of(request.branchId()), request.fullName(),
-                toServiceIds(request.serviceIds()), toWorkingHours(request.workingHours()))));
+                BranchId.of(request.branchId()), request.fullName(), new Email(request.email()),
+                new RawPassword(request.password()), toServiceIds(request.serviceIds()), toWorkingHours(request.workingHours()))));
     }
 
     @PutMapping("/{id}")
@@ -106,8 +113,15 @@ class StylistController {
     record CreateStylistRequest(
             @NotNull UUID branchId,
             @NotBlank @Size(max = 150) String fullName,
+            @NotBlank @Size(max = 254) String email,
+            @NotBlank String password,
             @NotNull Set<@NotNull UUID> serviceIds,
             @NotNull List<@NotNull @Valid WorkingHoursDto> workingHours) {
+
+        @Override
+        public String toString() {
+            return "CreateStylistRequest[***]";
+        }
     }
 
     record UpdateStylistRequest(
@@ -121,6 +135,15 @@ class StylistController {
     }
 
     record TimeOffDto(Instant start, Instant end, String reason) {
+    }
+
+    /** Lo que puede ver cualquier visitante: sin ausencias, que pueden incluir motivos personales. */
+    record PublicStylistResponse(UUID id, UUID branchId, String fullName, Set<UUID> serviceIds) {
+
+        static PublicStylistResponse from(Stylist stylist) {
+            return new PublicStylistResponse(stylist.id().value(), stylist.branchId().value(), stylist.fullName(),
+                    stylist.services().stream().map(SalonServiceId::value).collect(Collectors.toSet()));
+        }
     }
 
     record StylistResponse(UUID id, UUID branchId, String fullName, boolean active, Set<UUID> serviceIds,

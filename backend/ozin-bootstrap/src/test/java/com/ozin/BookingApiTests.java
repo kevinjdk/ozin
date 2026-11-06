@@ -3,6 +3,7 @@ package com.ozin;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.web.servlet.ResultActions;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -17,8 +18,8 @@ class BookingApiTests extends ApiTestSupport {
     private static final String NEXT_MONDAY = "2026-11-16";
 
     private String haircut;
-    private String ana;
-    private String customer;
+    private TestStylist ana;
+    private TestCustomer customer;
 
     @BeforeEach
     void givenASalon() throws Exception {
@@ -28,22 +29,26 @@ class BookingApiTests extends ApiTestSupport {
     }
 
     private String bookedAppointment(String localStart) throws Exception {
-        return createdId(book(customer, ana, haircut, localStart));
+        return createdId(book(customer, ana.id(), haircut, localStart));
     }
 
-    private org.springframework.test.web.servlet.ResultActions availability(String date) throws Exception {
-        return mockMvc.perform(get("/api/v1/stylists/{id}/availability", ana)
+    private ResultActions availability(String date) throws Exception {
+        return mockMvc.perform(get("/api/v1/stylists/{id}/availability", ana.id())
                 .param("serviceId", haircut).param("date", date));
+    }
+
+    private ResultActions cancel(String appointment, String token) throws Exception {
+        return postJson("/api/v1/appointments/" + appointment + "/cancel", "", token);
     }
 
     @Nested
     class Catalog {
 
         @Test
-        void hu01_showsOnlyActiveServicesByDefault() throws Exception {
+        void hu01_showsOnlyActiveServicesToVisitors() throws Exception {
             putJson("/api/v1/services/" + createService("Tinte", 90, "35.00"), """
                     {"name": "Tinte", "durationMinutes": 90, "price": 35.00, "active": false}
-                    """).andExpect(status().isOk());
+                    """, adminToken).andExpect(status().isOk());
 
             mockMvc.perform(get("/api/v1/services"))
                     .andExpect(status().isOk())
@@ -53,8 +58,7 @@ class BookingApiTests extends ApiTestSupport {
                     .andExpect(jsonPath("$[0].price").value(12.00))
                     .andExpect(jsonPath("$[0].currency").value("USD"));
 
-            mockMvc.perform(get("/api/v1/services").param("includeInactive", "true"))
-                    .andExpect(jsonPath("$", hasSize(2)));
+            getWith(adminToken, "/api/v1/services/manage").andExpect(jsonPath("$", hasSize(2)));
         }
 
         @Test
@@ -87,9 +91,9 @@ class BookingApiTests extends ApiTestSupport {
 
         @Test
         void hu12_timeOffRemovesSlots() throws Exception {
-            postJson("/api/v1/stylists/" + ana + "/time-offs", """
+            postJson("/api/v1/stylists/" + ana.id() + "/time-offs", """
                     {"start": "%s", "end": "%s", "reason": "Cita médica"}
-                    """.formatted(at(MONDAY + "T09:00"), at(MONDAY + "T13:00")))
+                    """.formatted(at(MONDAY + "T09:00"), at(MONDAY + "T13:00")), adminToken)
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.timeOffs[0].reason").value("Cita médica"));
 
@@ -101,9 +105,9 @@ class BookingApiTests extends ApiTestSupport {
             String body = """
                     {"start": "%s", "end": "%s"}
                     """.formatted(at(MONDAY + "T09:00"), at(MONDAY + "T13:00"));
-            postJson("/api/v1/stylists/" + ana + "/time-offs", body).andExpect(status().isCreated());
+            postJson("/api/v1/stylists/" + ana.id() + "/time-offs", body, adminToken).andExpect(status().isCreated());
 
-            postJson("/api/v1/stylists/" + ana + "/time-offs", body)
+            postJson("/api/v1/stylists/" + ana.id() + "/time-offs", body, adminToken)
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
         }
@@ -114,9 +118,10 @@ class BookingApiTests extends ApiTestSupport {
 
         @Test
         void hu03_createsPendingAppointmentWithFrozenPrice() throws Exception {
-            book(customer, ana, haircut, MONDAY + "T10:00")
+            book(customer, ana.id(), haircut, MONDAY + "T10:00")
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.status").value("PENDING"))
+                    .andExpect(jsonPath("$.customerId").value(customer.id()))
                     .andExpect(jsonPath("$.price").value(12.00))
                     .andExpect(jsonPath("$.branchId").value(DEFAULT_BRANCH))
                     .andExpect(jsonPath("$.start").value("2026-11-09T15:00:00Z"))
@@ -127,7 +132,7 @@ class BookingApiTests extends ApiTestSupport {
         void hu03_rejectsADoubleBookingWith409() throws Exception {
             bookedAppointment(MONDAY + "T10:00");
 
-            book(createCustomer(), ana, haircut, MONDAY + "T10:30")
+            book(createCustomer(), ana.id(), haircut, MONDAY + "T10:30")
                     .andExpect(status().isConflict())
                     .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
                     .andExpect(jsonPath("$.code").value("RN-01"));
@@ -137,7 +142,7 @@ class BookingApiTests extends ApiTestSupport {
         void rn04_rejectsTooShortNoticeWith422() throws Exception {
             clock.set(at(MONDAY + "T09:30"));
 
-            book(customer, ana, haircut, MONDAY + "T10:00")
+            book(customer, ana.id(), haircut, MONDAY + "T10:00")
                     .andExpect(status().isUnprocessableContent())
                     .andExpect(jsonPath("$.code").value("RN-04"));
         }
@@ -148,7 +153,7 @@ class BookingApiTests extends ApiTestSupport {
             bookedAppointment(MONDAY + "T10:00");
             bookedAppointment(MONDAY + "T11:00");
 
-            book(customer, ana, haircut, MONDAY + "T14:00")
+            book(customer, ana.id(), haircut, MONDAY + "T14:00")
                     .andExpect(status().isUnprocessableContent())
                     .andExpect(jsonPath("$.code").value("RN-08"));
         }
@@ -160,7 +165,7 @@ class BookingApiTests extends ApiTestSupport {
             bookedAppointment(MONDAY + "T11:00");
             clock.set(at(MONDAY + "T12:30"));
 
-            book(customer, ana, haircut, MONDAY + "T14:00").andExpect(status().isCreated());
+            book(customer, ana.id(), haircut, MONDAY + "T14:00").andExpect(status().isCreated());
         }
 
         @Test
@@ -169,9 +174,9 @@ class BookingApiTests extends ApiTestSupport {
 
             putJson("/api/v1/services/" + haircut, """
                     {"name": "Corte", "durationMinutes": 45, "price": 20.00, "active": true}
-                    """).andExpect(status().isOk());
+                    """, adminToken).andExpect(status().isOk());
 
-            mockMvc.perform(get("/api/v1/customers/{id}/appointments", customer))
+            getWith(customer.token(), "/api/v1/customers/me/appointments")
                     .andExpect(jsonPath("$.items[0].price").value(12.00));
         }
     }
@@ -183,13 +188,11 @@ class BookingApiTests extends ApiTestSupport {
         void hu05_customerCanCancelInTimeAndTheSlotBecomesFree() throws Exception {
             String appointment = bookedAppointment(NEXT_MONDAY + "T10:00");
 
-            postJson("/api/v1/appointments/" + appointment + "/cancel", """
-                    {"actor": "CUSTOMER"}
-                    """)
+            cancel(appointment, customer.token())
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.status").value("CANCELLED"));
 
-            book(createCustomer(), ana, haircut, NEXT_MONDAY + "T10:00").andExpect(status().isCreated());
+            book(createCustomer(), ana.id(), haircut, NEXT_MONDAY + "T10:00").andExpect(status().isCreated());
         }
 
         @Test
@@ -197,33 +200,29 @@ class BookingApiTests extends ApiTestSupport {
             String appointment = bookedAppointment(NEXT_MONDAY + "T10:00");
             clock.set(at(NEXT_MONDAY + "T09:00"));
 
-            postJson("/api/v1/appointments/" + appointment + "/cancel", """
-                    {"actor": "CUSTOMER"}
-                    """)
+            cancel(appointment, customer.token())
                     .andExpect(status().isUnprocessableContent())
                     .andExpect(jsonPath("$.code").value("RN-07"));
 
-            postJson("/api/v1/appointments/" + appointment + "/cancel", """
-                    {"actor": "ADMIN"}
-                    """)
+            cancel(appointment, adminToken)
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.status").value("CANCELLED"));
         }
 
         @Test
-        void hu09_appointmentGoesFromPendingToCompleted() throws Exception {
+        void hu09_stylistTakesTheAppointmentFromPendingToCompleted() throws Exception {
             String appointment = bookedAppointment(MONDAY + "T10:00");
 
-            postJson("/api/v1/appointments/" + appointment + "/confirm", "")
+            postJson("/api/v1/appointments/" + appointment + "/confirm", "", ana.token())
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.status").value("CONFIRMED"));
 
-            postJson("/api/v1/appointments/" + appointment + "/complete", "")
+            postJson("/api/v1/appointments/" + appointment + "/complete", "", ana.token())
                     .andExpect(status().isConflict())
                     .andExpect(jsonPath("$.code").value("INVALID_STATE_TRANSITION"));
 
             clock.set(at(MONDAY + "T10:45"));
-            postJson("/api/v1/appointments/" + appointment + "/complete", "")
+            postJson("/api/v1/appointments/" + appointment + "/complete", "", ana.token())
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.status").value("COMPLETED"));
         }
@@ -231,10 +230,10 @@ class BookingApiTests extends ApiTestSupport {
         @Test
         void hu09_confirmedAppointmentCanBeMarkedAsNoShow() throws Exception {
             String appointment = bookedAppointment(MONDAY + "T10:00");
-            postJson("/api/v1/appointments/" + appointment + "/confirm", "").andExpect(status().isOk());
+            postJson("/api/v1/appointments/" + appointment + "/confirm", "", ana.token()).andExpect(status().isOk());
             clock.set(at(MONDAY + "T10:20"));
 
-            postJson("/api/v1/appointments/" + appointment + "/no-show", "")
+            postJson("/api/v1/appointments/" + appointment + "/no-show", "", ana.token())
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.status").value("NO_SHOW"));
         }
@@ -248,7 +247,7 @@ class BookingApiTests extends ApiTestSupport {
             bookedAppointment(MONDAY + "T09:00");
             bookedAppointment(MONDAY + "T10:00");
 
-            mockMvc.perform(get("/api/v1/customers/{id}/appointments", customer).param("size", "1"))
+            getWith(customer.token(), get("/api/v1/customers/me/appointments").param("size", "1"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.totalItems").value(2))
                     .andExpect(jsonPath("$.items", hasSize(1)))
@@ -263,9 +262,9 @@ class BookingApiTests extends ApiTestSupport {
             bookedAppointment(MONDAY + "T09:00");
             bookedAppointment(NEXT_MONDAY + "T09:00");
 
-            mockMvc.perform(get("/api/v1/stylists/{id}/agenda", ana)
-                            .param("from", at(MONDAY + "T00:00").toString())
-                            .param("to", at("2026-11-10T00:00").toString()))
+            getWith(ana.token(), get("/api/v1/stylists/{id}/agenda", ana.id())
+                    .param("from", at(MONDAY + "T00:00").toString())
+                    .param("to", at("2026-11-10T00:00").toString()))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$", hasSize(2)))
                     .andExpect(jsonPath("$[0].start").value("2026-11-09T14:00:00Z"))
@@ -276,15 +275,15 @@ class BookingApiTests extends ApiTestSupport {
         void hu13_branchAgendaRejectsRangesLongerThan31Days() throws Exception {
             bookedAppointment(MONDAY + "T10:00");
 
-            mockMvc.perform(get("/api/v1/branches/{id}/agenda", DEFAULT_BRANCH)
-                            .param("from", at(MONDAY + "T00:00").toString())
-                            .param("to", at("2026-11-10T00:00").toString()))
+            getWith(adminToken, get("/api/v1/branches/{id}/agenda", DEFAULT_BRANCH)
+                    .param("from", at(MONDAY + "T00:00").toString())
+                    .param("to", at("2026-11-10T00:00").toString()))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$", hasSize(1)));
 
-            mockMvc.perform(get("/api/v1/branches/{id}/agenda", DEFAULT_BRANCH)
-                            .param("from", at(MONDAY + "T00:00").toString())
-                            .param("to", at("2026-12-31T00:00").toString()))
+            getWith(adminToken, get("/api/v1/branches/{id}/agenda", DEFAULT_BRANCH)
+                    .param("from", at(MONDAY + "T00:00").toString())
+                    .param("to", at("2026-12-31T00:00").toString()))
                     .andExpect(status().isBadRequest());
         }
     }
@@ -296,29 +295,31 @@ class BookingApiTests extends ApiTestSupport {
         void hu11_updateReplacesServicesAndWorkingHours() throws Exception {
             String coloring = createService("Tinte", 90, "35.00");
 
-            putJson("/api/v1/stylists/" + ana, """
+            putJson("/api/v1/stylists/" + ana.id(), """
                     {"fullName": "Ana María", "active": true, "serviceIds": ["%s"],
                      "workingHours": [{"day": "TUESDAY", "start": "10:00", "end": "12:00"}]}
-                    """.formatted(coloring)).andExpect(status().isOk());
+                    """.formatted(coloring), adminToken).andExpect(status().isOk());
 
             mockMvc.perform(get("/api/v1/stylists").param("serviceId", coloring))
                     .andExpect(jsonPath("$", hasSize(1)))
-                    .andExpect(jsonPath("$[0].fullName").value("Ana María"))
-                    .andExpect(jsonPath("$[0].workingHours", hasSize(1)))
-                    .andExpect(jsonPath("$[0].workingHours[0].day").value("TUESDAY"));
+                    .andExpect(jsonPath("$[0].fullName").value("Ana María"));
 
             mockMvc.perform(get("/api/v1/stylists").param("serviceId", haircut))
                     .andExpect(jsonPath("$", hasSize(0)));
+
+            getWith(adminToken, "/api/v1/stylists/manage")
+                    .andExpect(jsonPath("$[0].workingHours", hasSize(1)))
+                    .andExpect(jsonPath("$[0].workingHours[0].day").value("TUESDAY"));
         }
 
         @Test
         void hu11_inactiveStylistIsHiddenAndCannotBeBooked() throws Exception {
-            putJson("/api/v1/stylists/" + ana, """
+            putJson("/api/v1/stylists/" + ana.id(), """
                     {"fullName": "Ana Pérez", "active": false, "serviceIds": ["%s"], "workingHours": %s}
-                    """.formatted(haircut, mondayShifts())).andExpect(status().isOk());
+                    """.formatted(haircut, mondayShifts()), adminToken).andExpect(status().isOk());
 
             mockMvc.perform(get("/api/v1/stylists")).andExpect(jsonPath("$", hasSize(0)));
-            book(customer, ana, haircut, MONDAY + "T10:00")
+            book(customer, ana.id(), haircut, MONDAY + "T10:00")
                     .andExpect(status().isUnprocessableContent())
                     .andExpect(jsonPath("$.code").value("STYLIST_INACTIVE"));
         }
@@ -326,9 +327,9 @@ class BookingApiTests extends ApiTestSupport {
         @Test
         void rejectsUnknownServicesOnCreate() throws Exception {
             postJson("/api/v1/stylists", """
-                    {"branchId": "%s", "fullName": "Luis",
+                    {"branchId": "%s", "fullName": "Luis", "email": "luis@example.com", "password": "%s",
                      "serviceIds": ["00000000-0000-0000-0000-00000000dead"], "workingHours": []}
-                    """.formatted(DEFAULT_BRANCH))
+                    """.formatted(DEFAULT_BRANCH, PASSWORD), adminToken)
                     .andExpect(status().isBadRequest());
         }
     }
@@ -339,8 +340,8 @@ class BookingApiTests extends ApiTestSupport {
         @Test
         void missingFieldsAreReportedOneByOne() throws Exception {
             postJson("/api/v1/appointments", """
-                    {"customerId": "%s"}
-                    """.formatted(customer))
+                    {"serviceId": "%s"}
+                    """.formatted(haircut), customer.token())
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
                     .andExpect(jsonPath("$.errors.stylistId").exists())
@@ -353,44 +354,26 @@ class BookingApiTests extends ApiTestSupport {
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"));
 
-            postJson("/api/v1/appointments/00000000-0000-0000-0000-00000000dead/confirm", "")
+            postJson("/api/v1/appointments/00000000-0000-0000-0000-00000000dead/confirm", "", adminToken)
                     .andExpect(status().isNotFound());
         }
 
         @Test
         void malformedRequestsReturn400() throws Exception {
-            mockMvc.perform(get("/api/v1/customers/not-a-uuid/appointments"))
+            mockMvc.perform(get("/api/v1/stylists/not-a-uuid/availability")
+                            .param("serviceId", haircut).param("date", MONDAY))
                     .andExpect(status().isBadRequest());
 
-            postJson("/api/v1/customers", "{not json").andExpect(status().isBadRequest());
+            postJson("/api/v1/auth/register", "{not json").andExpect(status().isBadRequest());
         }
 
         @Test
         void rejectsPricesWithTooManyDecimals() throws Exception {
             postJson("/api/v1/services", """
                     {"name": "Barba", "durationMinutes": 15, "price": 5.005}
-                    """)
+                    """, adminToken)
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
-        }
-
-        @Test
-        void rejectsDuplicateEmailIgnoringCase() throws Exception {
-            String body = """
-                    {"fullName": "Eva", "email": "%s", "phone": "+593991234567"}
-                    """;
-            postJson("/api/v1/customers", body.formatted("eva@example.com")).andExpect(status().isCreated());
-
-            postJson("/api/v1/customers", body.formatted("EVA@example.com"))
-                    .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.code").value("EMAIL_ALREADY_REGISTERED"));
-        }
-
-        @Test
-        void rejectsInvalidPhoneNumber() throws Exception {
-            postJson("/api/v1/customers", """
-                    {"fullName": "Eva", "email": "eva@example.com", "phone": "0991234567"}
-                    """).andExpect(status().isBadRequest());
         }
     }
 }

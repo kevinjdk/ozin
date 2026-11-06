@@ -11,8 +11,6 @@ import java.util.UUID;
 
 interface CustomerJpaRepository extends JpaRepository<CustomerJpaEntity, UUID> {
 
-    boolean existsByEmail(String email);
-
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select c from CustomerJpaEntity c where c.id = :id")
     Optional<CustomerJpaEntity> findByIdForUpdate(@Param("id") UUID id);

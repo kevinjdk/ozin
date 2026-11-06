@@ -6,6 +6,7 @@ import com.ozin.application.booking.port.out.SaveAppointmentPort;
 import com.ozin.application.shared.port.out.UnitOfWork;
 import com.ozin.domain.booking.Appointment;
 import com.ozin.domain.booking.AppointmentId;
+import com.ozin.domain.identity.Actor;
 import com.ozin.domain.shared.ResourceNotFoundException;
 
 public final class ConfirmAppointmentService implements ConfirmAppointmentUseCase {
@@ -23,10 +24,11 @@ public final class ConfirmAppointmentService implements ConfirmAppointmentUseCas
     }
 
     @Override
-    public Appointment confirm(AppointmentId id) {
+    public Appointment confirm(AppointmentId id, Actor actor) {
         return unitOfWork.inTransaction(() -> {
             Appointment appointment = loadAppointments.findById(id)
                     .orElseThrow(() -> new ResourceNotFoundException("Cita", id.value()));
+            appointment.ensureManageableBy(actor);
             appointment.confirm();
             saveAppointments.save(appointment);
             return appointment;
