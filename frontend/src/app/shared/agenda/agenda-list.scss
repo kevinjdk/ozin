@@ -1,0 +1,66 @@
+.day + .day {
+  margin-top: 1.5rem;
+}
+
+.day__title {
+  font-size: 1.125rem;
+  margin-bottom: 0.5rem;
+
+  &::first-letter {
+    text-transform: uppercase;
+  }
+}
+
+.day__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--ozin-paper);
+  border: 1px solid var(--ozin-line);
+  border-radius: 0.875rem;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 3.5rem 1fr auto;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  padding: 0.875rem 1rem;
+
+  & + & {
+    border-top: 1px solid var(--ozin-line);
+  }
+}
+
+.item__time {
+  display: grid;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+
+  span {
+    font-weight: 400;
+    font-size: 0.8125rem;
+    color: var(--ozin-muted);
+  }
+}
+
+.item__body {
+  display: grid;
+  min-width: 0;
+
+  span {
+    font-size: 0.9375rem;
+  }
+}
+
+.item__actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.375rem;
+
+  &:empty {
+    display: none;
+  }
+}

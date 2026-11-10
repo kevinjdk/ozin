@@ -3,7 +3,7 @@
 [![CI](https://github.com/kevinjdk/ozin/actions/workflows/ci.yml/badge.svg)](https://github.com/kevinjdk/ozin/actions/workflows/ci.yml)
 ![Java](https://img.shields.io/badge/Java-21-orange)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1-6DB33F)
-![Angular](https://img.shields.io/badge/Angular-22-DD0031)
+![Angular](https://img.shields.io/badge/Angular-21-DD0031)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-336791)
 
 Ozin permite a los clientes de una peluquería reservar citas en línea, a los estilistas gestionar su agenda
@@ -16,12 +16,12 @@ calidad, la seguridad y la mantenibilidad propias de un sistema empresarial.
 
 ## Seguridad
 
-- Autenticación con JWT de corta duración y refresh tokens rotativos con detección de reutilización.
+- Access token de corta duración en memoria y refresh token rotativo en una cookie `HttpOnly`, con detección de reutilización y protección CSRF.
 - Autorización por rol en cada ruta y por propietario en cada recurso, con denegación por defecto.
 - Contraseñas con BCrypt, límite de intentos de inicio de sesión y respuestas que no revelan qué cuentas existen.
 - Sin credenciales en el repositorio: sin `OZIN_JWT_SECRET` la aplicación no arranca.
 
-Las decisiones están en el [ADR-0004](docs/adr/0004-autenticacion-jwt.md) y se comprueban en
+Las decisiones están en los ADR [0004](docs/adr/0004-autenticacion-jwt.md) y [0008](docs/adr/0008-refresh-token-en-cookie.md), y se comprueban en
 [SecurityApiTests](backend/ozin-bootstrap/src/test/java/com/ozin/SecurityApiTests.java).
 
 ## Stack
@@ -29,9 +29,9 @@ Las decisiones están en el [ADR-0004](docs/adr/0004-autenticacion-jwt.md) y se 
 | Capa | Tecnologías |
 |---|---|
 | Backend | Java 21, Spring Boot 4, Spring Data JPA, Spring Security (JWT), Flyway, springdoc-openapi |
-| Frontend | Angular 22 (standalone, signals), PrimeNG 22 |
+| Frontend | Angular 21 (standalone, signals), PrimeNG 21 |
 | Base de datos | PostgreSQL 17 |
-| Testing | JUnit 5, Mockito, AssertJ, Testcontainers, ArchUnit, Vitest |
+| Testing | JUnit 5, Mockito, AssertJ, Testcontainers, ArchUnit, Vitest, Playwright |
 | DevOps | Docker, GitHub Actions, JaCoCo |
 
 ## Arquitectura
@@ -83,6 +83,9 @@ npm start
 ```bash
 cd backend && ./mvnw verify      # unitarios + arquitectura + integración (requiere Docker)
 cd frontend && npm run test:ci
+
+# Recorridos E2E: con la base de datos y el backend en marcha, con las variables del paso 2
+cd frontend && npx playwright install chromium && npm run e2e
 ```
 
 ## Hoja de ruta
@@ -92,7 +95,7 @@ cd frontend && npm run test:ci
 - [x] **Fase 2:** dominio de reservas con TDD
 - [x] **Fase 3:** persistencia (JPA + Flyway) y API REST
 - [x] **Fase 4:** seguridad (JWT, roles)
-- [ ] **Fase 5:** frontend (reserva, panel de cliente, estilista y admin)
+- [x] **Fase 5:** frontend (reserva, panel de cliente, estilista y admin)
 - [ ] **Fase 6:** despliegue y SonarCloud
 
 ## Autor

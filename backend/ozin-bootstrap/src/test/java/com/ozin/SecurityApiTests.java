@@ -1,6 +1,6 @@
 package com.ozin;
 
-import com.jayway.jsonpath.JsonPath;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -11,9 +11,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.ResultActions;
 
-import java.util.Map;
-
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.containsString;
@@ -31,6 +30,8 @@ class SecurityApiTests extends ApiTestSupport {
 
     private static final String MONDAY = "2026-11-09";
     private static final String NEXT_MONDAY = "2026-11-16";
+    private static final String REFRESH_COOKIE = "ozin_refresh";
+    private static final String CSRF_HEADER = "X-Ozin-Client";
 
     private String haircut;
     private TestStylist ana;
@@ -43,15 +44,19 @@ class SecurityApiTests extends ApiTestSupport {
         customer = createCustomer();
     }
 
-    private Map<String, Object> session(String email) throws Exception {
-        return JsonPath.read(login(email, PASSWORD).andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString(), "$");
+    private String refreshCookieOf(String email) throws Exception {
+        return login(email, PASSWORD).andExpect(status().isOk())
+                .andReturn().getResponse().getCookie(REFRESH_COOKIE).getValue();
     }
 
     private ResultActions refresh(String refreshToken) throws Exception {
-        return postJson("/api/v1/auth/refresh", """
-                {"refreshToken": "%s"}
-                """.formatted(refreshToken));
+        return mockMvc.perform(post("/api/v1/auth/refresh")
+                .cookie(new Cookie(REFRESH_COOKIE, refreshToken))
+                .header(CSRF_HEADER, "web"));
+    }
+
+    private static String rotatedCookie(ResultActions result) {
+        return result.andReturn().getResponse().getCookie(REFRESH_COOKIE).getValue();
     }
 
     private ResultActions loginFrom(String address, String email, String password) throws Exception {
@@ -374,11 +379,10 @@ class SecurityApiTests extends ApiTestSupport {
 
         @Test
         void rotatesTheTokenAndKeepsTheSessionAlive() throws Exception {
-            String first = (String) session(ADMIN_EMAIL).get("refreshToken");
+            String first = refreshCookieOf(ADMIN_EMAIL);
 
-            String second = JsonPath.read(refresh(first).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.role").value("ADMIN"))
-                    .andReturn().getResponse().getContentAsString(), "$.refreshToken");
+            String second = rotatedCookie(refresh(first).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.role").value("ADMIN")));
 
             assertThat(second).isNotEqualTo(first);
             refresh(second).andExpect(status().isOk());
@@ -386,7 +390,7 @@ class SecurityApiTests extends ApiTestSupport {
 
         @Test
         void onlyTheHashIsStored() throws Exception {
-            String raw = (String) session(ADMIN_EMAIL).get("refreshToken");
+            String raw = refreshCookieOf(ADMIN_EMAIL);
 
             Integer plainCopies = jdbc.queryForObject(
                     "SELECT count(*) FROM refresh_token WHERE token_hash = ?", Integer.class, raw);
@@ -396,9 +400,8 @@ class SecurityApiTests extends ApiTestSupport {
 
         @Test
         void reusingAnOldTokenRevokesTheWholeSession() throws Exception {
-            String stolen = (String) session(ADMIN_EMAIL).get("refreshToken");
-            String current = JsonPath.read(refresh(stolen).andExpect(status().isOk())
-                    .andReturn().getResponse().getContentAsString(), "$.refreshToken");
+            String stolen = refreshCookieOf(ADMIN_EMAIL);
+            String current = rotatedCookie(refresh(stolen).andExpect(status().isOk()));
 
             refresh(stolen)
                     .andExpect(status().isUnauthorized())
@@ -409,8 +412,8 @@ class SecurityApiTests extends ApiTestSupport {
 
         @Test
         void reuseOnlyRevokesThatSessionNotOtherDevices() throws Exception {
-            String stolen = (String) session(ADMIN_EMAIL).get("refreshToken");
-            String otherDevice = (String) session(ADMIN_EMAIL).get("refreshToken");
+            String stolen = refreshCookieOf(ADMIN_EMAIL);
+            String otherDevice = refreshCookieOf(ADMIN_EMAIL);
             refresh(stolen).andExpect(status().isOk());
 
             refresh(stolen).andExpect(status().isUnauthorized());
@@ -420,7 +423,7 @@ class SecurityApiTests extends ApiTestSupport {
 
         @Test
         void expiredTokensAreRejected() throws Exception {
-            String token = (String) session(ADMIN_EMAIL).get("refreshToken");
+            String token = refreshCookieOf(ADMIN_EMAIL);
             clock.set(at("2026-11-16T08:00"));
 
             refresh(token).andExpect(status().isUnauthorized());
@@ -435,13 +438,68 @@ class SecurityApiTests extends ApiTestSupport {
 
         @Test
         void logoutEndsTheSession() throws Exception {
-            String token = (String) session(ADMIN_EMAIL).get("refreshToken");
+            String token = refreshCookieOf(ADMIN_EMAIL);
 
-            postJson("/api/v1/auth/logout", """
-                    {"refreshToken": "%s"}
-                    """.formatted(token)).andExpect(status().isNoContent());
+            mockMvc.perform(post("/api/v1/auth/logout")
+                            .cookie(new Cookie(REFRESH_COOKIE, token))
+                            .header(CSRF_HEADER, "web"))
+                    .andExpect(status().isNoContent())
+                    .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Max-Age=0")));
 
             refresh(token).andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        void aRequestWithoutCookieIsRejected() throws Exception {
+            mockMvc.perform(post("/api/v1/auth/refresh").header(CSRF_HEADER, "web"))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.code").value("INVALID_REFRESH_TOKEN"));
+        }
+    }
+
+    @Nested
+    class SessionCookie {
+
+        @Test
+        void isInaccessibleToJavascriptAndRestrictedToTheAuthRoutes() throws Exception {
+            login(ADMIN_EMAIL, PASSWORD)
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.accessToken").exists())
+                    .andExpect(jsonPath("$.refreshToken").doesNotExist())
+                    .andExpect(header().string(HttpHeaders.SET_COOKIE, allOf(
+                            containsString("HttpOnly"),
+                            containsString("Secure"),
+                            containsString("SameSite=Strict"),
+                            containsString("Path=/api/v1/auth"))));
+        }
+
+        @Test
+        void csrf_refreshIsRejectedWithoutTheCustomHeader() throws Exception {
+            String token = refreshCookieOf(ADMIN_EMAIL);
+
+            mockMvc.perform(post("/api/v1/auth/refresh").cookie(new Cookie(REFRESH_COOKIE, token)))
+                    .andExpect(status().isForbidden());
+
+            refresh(token).andExpect(status().isOk());
+        }
+
+        @Test
+        void csrf_logoutIsRejectedWithoutTheCustomHeader() throws Exception {
+            String token = refreshCookieOf(ADMIN_EMAIL);
+
+            mockMvc.perform(post("/api/v1/auth/logout").cookie(new Cookie(REFRESH_COOKIE, token)))
+                    .andExpect(status().isForbidden());
+
+            refresh(token).andExpect(status().isOk());
+        }
+
+        @Test
+        void cors_otherOriginsCannotSendTheCustomHeader() throws Exception {
+            mockMvc.perform(options("/api/v1/auth/refresh")
+                            .header(HttpHeaders.ORIGIN, "https://sitio-malicioso.example")
+                            .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST")
+                            .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, CSRF_HEADER))
+                    .andExpect(status().isForbidden());
         }
     }
 
@@ -463,7 +521,7 @@ class SecurityApiTests extends ApiTestSupport {
 
         @Test
         void cannotRenewAnOpenSession() throws Exception {
-            String token = (String) session(ana.email()).get("refreshToken");
+            String token = refreshCookieOf(ana.email());
             deactivateAna();
 
             refresh(token).andExpect(status().isUnauthorized());

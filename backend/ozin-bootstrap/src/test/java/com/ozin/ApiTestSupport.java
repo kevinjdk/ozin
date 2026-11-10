@@ -41,6 +41,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(properties = {
         "ozin.security.jwt-secret=" + ApiTestSupport.JWT_SECRET,
         "ozin.security.bcrypt-strength=4",
+        "ozin.security.refresh-cookie-secure=true",
         "ozin.security.access-token-ttl=30d"
 })
 @AutoConfigureMockMvc
