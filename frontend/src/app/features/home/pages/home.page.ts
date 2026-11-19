@@ -49,6 +49,9 @@ import { SalonContext } from '../../../core/time/salon-context.service';
             <li class="catalog__row">
               <div class="catalog__name">
                 <h3>{{ service.name }}</h3>
+                @if (service.description) {
+                  <p class="catalog__description">{{ service.description }}</p>
+                }
                 <span class="muted">{{ service.durationMinutes }} minutos</span>
               </div>
               <span class="catalog__price">{{ money(service) }}</span>

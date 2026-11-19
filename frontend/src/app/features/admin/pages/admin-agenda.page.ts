@@ -1,26 +1,24 @@
-import { ChangeDetectionStrategy, Component, effect, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, OnInit, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ButtonModule } from 'primeng/button';
 import { SelectModule } from 'primeng/select';
-import { SkeletonModule } from 'primeng/skeleton';
 
 import { AppointmentView, Stylist } from '../../../core/api/models';
 import { SalonApi } from '../../../core/api/salon.api';
 import { problemMessage } from '../../../core/errors/problem';
 import { SalonContext } from '../../../core/time/salon-context.service';
 import { localDateIn } from '../../../core/time/salon-time';
-import { AgendaActionRequest, AgendaList } from '../../../shared/agenda/agenda-list';
-import { agendaRange, AgendaView } from '../../../shared/agenda/agenda-range';
-import { AgendaToolbar } from '../../../shared/agenda/agenda-toolbar';
+import { monthOf, monthRange } from '../../../shared/agenda/agenda-calendar';
+import { AgendaBoard } from '../../../shared/agenda/agenda-board';
+import { AgendaActionRequest } from '../../../shared/agenda/agenda-list';
 import { AppointmentActions } from '../../../shared/agenda/appointment-actions.service';
 
-/** HU-13. */
+/** HU-13: agenda de todo el salón, que se puede filtrar por estilista. */
 @Component({
   selector: 'app-admin-agenda-page',
-  imports: [FormsModule, ButtonModule, SelectModule, SkeletonModule, AgendaToolbar, AgendaList],
+  imports: [FormsModule, SelectModule, AgendaBoard],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="page">
+    <div class="page page--wide">
       <header class="page__header">
         <h1>Agenda del salón</h1>
         <p-select [options]="stylists()" optionLabel="fullName" optionValue="id" [showClear]="true"
@@ -28,19 +26,8 @@ import { AppointmentActions } from '../../../shared/agenda/appointment-actions.s
                   [ngModel]="stylistId()" (ngModelChange)="stylistId.set($event)" />
       </header>
 
-      <app-agenda-toolbar [(date)]="date" [(view)]="view" [zone]="salon.zone()" />
-
-      @if (appointments(); as list) {
-        <app-agenda-list [appointments]="list" [zone]="salon.zone()" [showStylist]="true" [canCancel]="true"
-                         (action)="run($event)" />
-      } @else if (error()) {
-        <div class="panel empty-state" role="alert">
-          <p>{{ error() }}</p>
-          <p-button label="Reintentar" severity="secondary" (onClick)="load()" />
-        </div>
-      } @else {
-        <p-skeleton height="10rem" />
-      }
+      <app-agenda-board [(date)]="date" [appointments]="appointments()" [error]="error()" [zone]="salon.zone()"
+                        [showStylist]="!stylistId()" [canCancel]="true" (action)="run($event)" (retry)="load()" />
     </div>
   `,
 })
@@ -50,29 +37,38 @@ export class AdminAgendaPage implements OnInit {
   protected readonly salon = inject(SalonContext);
 
   protected readonly date = signal(localDateIn(new Date(), this.salon.zone()));
-  protected readonly view = signal<AgendaView>('day');
+  /** Solo cambiar de mes o de estilista vuelve a pedir citas; elegir otro día del mismo mes no. */
+  private readonly month = computed(() => monthOf(this.date()));
   protected readonly stylistId = signal<string | null>(null);
   protected readonly stylists = signal<Stylist[]>([]);
   protected readonly appointments = signal<AppointmentView[] | null>(null);
   protected readonly error = signal<string | null>(null);
 
   constructor() {
-    effect(() => this.load());
+    effect(() => {
+      this.month();
+      this.stylistId();
+      this.salon.branch();
+      untracked(() => this.load());
+    });
   }
 
   ngOnInit(): void {
     this.api.allStylists().subscribe({ next: (stylists) => this.stylists.set(stylists) });
   }
 
-  protected load(): void {
+  /** @param keepCurrent tras una acción se recarga sin vaciar la agenda, para que no parpadee */
+  protected load(keepCurrent = false): void {
     const branch = this.salon.branch();
-    const stylistId = this.stylistId();
-    const range = agendaRange(this.date(), this.view(), this.salon.zone());
     if (!branch) {
       this.error.set('No se pudo cargar la sede.');
       return;
     }
-    this.appointments.set(null);
+    const stylistId = this.stylistId();
+    const range = monthRange(this.month(), this.salon.zone());
+    if (!keepCurrent) {
+      this.appointments.set(null);
+    }
     this.error.set(null);
     const request = stylistId ? this.api.stylistAgenda(stylistId, range) : this.api.branchAgenda(branch.id, range);
     request.subscribe({
@@ -82,6 +78,6 @@ export class AdminAgendaPage implements OnInit {
   }
 
   protected run(request: AgendaActionRequest): void {
-    this.actions.run(request.appointment.id, request.action, () => this.load());
+    this.actions.run(request.appointment.id, request.action, () => this.load(true));
   }
 }

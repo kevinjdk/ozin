@@ -1,35 +1,64 @@
-.day + .day {
-  margin-top: 1.5rem;
+:host {
+  display: block;
 }
 
-.day__title {
-  font-size: 1.125rem;
-  margin-bottom: 0.5rem;
+.list__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  margin-bottom: 1rem;
+}
 
-  &::first-letter {
-    text-transform: uppercase;
+.list__title {
+  font-size: 1.375rem;
+}
+
+// Cada hora es una fila de una línea de tiempo: la etiqueta a la izquierda y sus citas a la derecha.
+.hour {
+  display: grid;
+  grid-template-columns: 3.5rem 1fr;
+  gap: 0.75rem;
+
+  & + & {
+    margin-top: 0.75rem;
   }
 }
 
-.day__list {
+.hour__label {
+  padding-top: 0.875rem;
+  font-family: var(--ozin-body);
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ozin-muted);
+  border-top: 2px solid var(--ozin-line);
+}
+
+.hour__list {
+  display: grid;
+  gap: 0.5rem;
   list-style: none;
   margin: 0;
   padding: 0;
-  background: var(--ozin-paper);
-  border: 1px solid var(--ozin-line);
-  border-radius: 0.875rem;
 }
 
 .item {
   display: grid;
-  grid-template-columns: 3.5rem 1fr auto;
+  grid-template-columns: 4.25rem 1fr auto;
   gap: 0.5rem 1rem;
   align-items: center;
-  padding: 0.875rem 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--ozin-paper);
+  border: 1px solid var(--ozin-line);
+  border-left: 4px solid var(--ozin-busy);
+  border-radius: 0.75rem;
+}
 
-  & + & {
-    border-top: 1px solid var(--ozin-line);
-  }
+.item--cancelled {
+  border-left-color: var(--ozin-line);
+  opacity: 0.7;
 }
 
 .item__time {
@@ -62,5 +91,37 @@
 
   &:empty {
     display: none;
+  }
+}
+
+// Con espacio suficiente, las acciones van en la misma fila que la cita.
+@media (min-width: 64rem) {
+  .item {
+    grid-template-columns: 4.25rem 1fr auto auto;
+  }
+
+  .item__actions {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 30rem) {
+  .hour {
+    grid-template-columns: 1fr;
+    gap: 0.375rem;
+  }
+
+  .hour__label {
+    padding-top: 0.375rem;
+  }
+
+  .item {
+    grid-template-columns: 1fr auto;
+
+    .item__time {
+      grid-column: 1 / -1;
+      display: flex;
+      gap: 0.375rem;
+    }
   }
 }

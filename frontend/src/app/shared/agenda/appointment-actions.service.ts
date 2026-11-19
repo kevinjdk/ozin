@@ -5,8 +5,7 @@ import { AppointmentAction, SalonApi } from '../../core/api/salon.api';
 import { Notifier } from '../../core/errors/notifier.service';
 
 const DONE: Record<AppointmentAction, string> = {
-  confirm: 'Cita confirmada.',
-  complete: 'Cita completada.',
+  complete: 'Asistencia registrada. La cita queda completada.',
   'no-show': 'Cita marcada como no asistida.',
   cancel: 'Cita cancelada.',
 };

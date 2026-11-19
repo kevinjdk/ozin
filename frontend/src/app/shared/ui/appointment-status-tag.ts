@@ -5,9 +5,11 @@ import { AppointmentStatus } from '../../core/api/models';
 
 type Severity = 'info' | 'success' | 'secondary' | 'danger' | 'warn';
 
-const PRESENTATION: Record<AppointmentStatus, { label: string; severity: Severity }> = {
-  PENDING: { label: 'Pendiente', severity: 'warn' },
-  CONFIRMED: { label: 'Confirmada', severity: 'info' },
+/**
+ * Solo se etiquetan los estados que cambian algo para quien mira la tarjeta. Una cita confirmada es
+ * el caso normal (toda cita nace así), por eso no lleva etiqueta.
+ */
+const PRESENTATION: Partial<Record<AppointmentStatus, { label: string; severity: Severity }>> = {
   COMPLETED: { label: 'Completada', severity: 'success' },
   CANCELLED: { label: 'Cancelada', severity: 'secondary' },
   NO_SHOW: { label: 'No asistió', severity: 'danger' },
@@ -17,7 +19,11 @@ const PRESENTATION: Record<AppointmentStatus, { label: string; severity: Severit
   selector: 'app-appointment-status-tag',
   imports: [TagModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<p-tag [value]="presentation().label" [severity]="presentation().severity" />`,
+  template: `
+    @if (presentation(); as tag) {
+      <p-tag [value]="tag.label" [severity]="tag.severity" />
+    }
+  `,
 })
 export class AppointmentStatusTag {
   readonly status = input.required<AppointmentStatus>();

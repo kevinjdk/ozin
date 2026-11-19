@@ -1,6 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
-import { ButtonModule } from 'primeng/button';
-import { SkeletonModule } from 'primeng/skeleton';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 
 import { AppointmentView } from '../../../core/api/models';
 import { SalonApi } from '../../../core/api/salon.api';
@@ -8,32 +6,22 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { problemMessage } from '../../../core/errors/problem';
 import { SalonContext } from '../../../core/time/salon-context.service';
 import { localDateIn } from '../../../core/time/salon-time';
-import { AgendaActionRequest, AgendaList } from '../../../shared/agenda/agenda-list';
-import { agendaRange, AgendaView } from '../../../shared/agenda/agenda-range';
-import { AgendaToolbar } from '../../../shared/agenda/agenda-toolbar';
+import { monthOf, monthRange } from '../../../shared/agenda/agenda-calendar';
+import { AgendaBoard } from '../../../shared/agenda/agenda-board';
+import { AgendaActionRequest } from '../../../shared/agenda/agenda-list';
 import { AppointmentActions } from '../../../shared/agenda/appointment-actions.service';
 
-/** HU-08 y HU-09. */
+/** HU-08 y HU-09: la agenda propia del estilista. */
 @Component({
   selector: 'app-stylist-agenda-page',
-  imports: [ButtonModule, SkeletonModule, AgendaToolbar, AgendaList],
+  imports: [AgendaBoard],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="page">
+    <div class="page page--wide">
       <header class="page__header"><h1>Mi agenda</h1></header>
 
-      <app-agenda-toolbar [(date)]="date" [(view)]="view" [zone]="salon.zone()" />
-
-      @if (appointments(); as list) {
-        <app-agenda-list [appointments]="list" [zone]="salon.zone()" (action)="run($event)" />
-      } @else if (error()) {
-        <div class="panel empty-state" role="alert">
-          <p>{{ error() }}</p>
-          <p-button label="Reintentar" severity="secondary" (onClick)="load()" />
-        </div>
-      } @else {
-        <p-skeleton height="10rem" />
-      }
+      <app-agenda-board [(date)]="date" [appointments]="appointments()" [error]="error()" [zone]="salon.zone()"
+                        (action)="run($event)" (retry)="load()" />
     </div>
   `,
 })
@@ -44,28 +32,35 @@ export class StylistAgendaPage {
   protected readonly salon = inject(SalonContext);
 
   protected readonly date = signal(localDateIn(new Date(), this.salon.zone()));
-  protected readonly view = signal<AgendaView>('day');
+  private readonly month = computed(() => monthOf(this.date()));
   protected readonly appointments = signal<AppointmentView[] | null>(null);
   protected readonly error = signal<string | null>(null);
 
   constructor() {
-    effect(() => this.load());
+    effect(() => {
+      this.month();
+      this.auth.profileId();
+      untracked(() => this.load());
+    });
   }
 
-  protected load(): void {
+  /** @param keepCurrent tras una acción se recarga sin vaciar la agenda, para que no parpadee */
+  protected load(keepCurrent = false): void {
     const stylistId = this.auth.profileId();
     if (!stylistId) {
       return;
     }
-    this.appointments.set(null);
+    if (!keepCurrent) {
+      this.appointments.set(null);
+    }
     this.error.set(null);
-    this.api.stylistAgenda(stylistId, agendaRange(this.date(), this.view(), this.salon.zone())).subscribe({
+    this.api.stylistAgenda(stylistId, monthRange(this.month(), this.salon.zone())).subscribe({
       next: (appointments) => this.appointments.set(appointments),
       error: (error: unknown) => this.error.set(problemMessage(error)),
     });
   }
 
   protected run(request: AgendaActionRequest): void {
-    this.actions.run(request.appointment.id, request.action, () => this.load());
+    this.actions.run(request.appointment.id, request.action, () => this.load(true));
   }
 }
