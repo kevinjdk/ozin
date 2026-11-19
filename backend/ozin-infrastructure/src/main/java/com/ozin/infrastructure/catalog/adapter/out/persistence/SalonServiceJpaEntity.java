@@ -19,6 +19,9 @@ public class SalonServiceJpaEntity extends AuditableEntity {
     @Column(nullable = false)
     String name;
 
+    @Column(nullable = false, length = 500)
+    String description;
+
     @Column(name = "duration_minutes", nullable = false)
     int durationMinutes;
 

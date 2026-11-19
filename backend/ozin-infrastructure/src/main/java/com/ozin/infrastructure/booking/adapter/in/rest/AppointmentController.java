@@ -3,7 +3,6 @@ package com.ozin.infrastructure.booking.adapter.in.rest;
 import com.ozin.application.booking.port.in.BookAppointmentUseCase;
 import com.ozin.application.booking.port.in.CancelAppointmentUseCase;
 import com.ozin.application.booking.port.in.CompleteAppointmentUseCase;
-import com.ozin.application.booking.port.in.ConfirmAppointmentUseCase;
 import com.ozin.application.booking.port.in.MarkAppointmentNoShowUseCase;
 import com.ozin.domain.booking.Appointment;
 import com.ozin.domain.booking.AppointmentId;
@@ -41,18 +40,15 @@ import java.util.UUID;
 class AppointmentController {
 
     private final BookAppointmentUseCase bookAppointment;
-    private final ConfirmAppointmentUseCase confirmAppointment;
     private final CancelAppointmentUseCase cancelAppointment;
     private final CompleteAppointmentUseCase completeAppointment;
     private final MarkAppointmentNoShowUseCase markNoShow;
 
     AppointmentController(BookAppointmentUseCase bookAppointment,
-                          ConfirmAppointmentUseCase confirmAppointment,
                           CancelAppointmentUseCase cancelAppointment,
                           CompleteAppointmentUseCase completeAppointment,
                           MarkAppointmentNoShowUseCase markNoShow) {
         this.bookAppointment = bookAppointment;
-        this.confirmAppointment = confirmAppointment;
         this.cancelAppointment = cancelAppointment;
         this.completeAppointment = completeAppointment;
         this.markNoShow = markNoShow;
@@ -60,17 +56,11 @@ class AppointmentController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Reserva una cita")
+    @Operation(summary = "Reserva una cita, que queda confirmada")
     AppointmentResponse book(@Valid @RequestBody BookAppointmentRequest request, @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
         return AppointmentResponse.from(bookAppointment.book(new BookAppointmentUseCase.Command(
                 CurrentActor.from(jwt).customerId(), StylistId.of(request.stylistId()),
                 SalonServiceId.of(request.serviceId()), request.start())));
-    }
-
-    @PostMapping("/{id}/confirm")
-    @Operation(summary = "Confirma una cita pendiente")
-    AppointmentResponse confirm(@PathVariable UUID id, @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
-        return AppointmentResponse.from(confirmAppointment.confirm(AppointmentId.of(id), CurrentActor.from(jwt)));
     }
 
     @PostMapping("/{id}/cancel")

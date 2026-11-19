@@ -26,7 +26,8 @@ public final class UpdateSalonServiceService implements UpdateSalonServiceUseCas
         return unitOfWork.inTransaction(() -> {
             SalonService service = loadServices.findById(command.id())
                     .orElseThrow(() -> new ResourceNotFoundException("Servicio", command.id().value()));
-            service.revise(command.name(), command.duration(), command.price(), command.active());
+            service.revise(command.name(), command.description(), command.duration(), command.price(),
+                    command.active());
             saveServices.save(service);
             return service;
         });

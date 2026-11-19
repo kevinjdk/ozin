@@ -72,11 +72,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/services", "/api/v1/stylists",
                                 "/api/v1/stylists/*/time-offs").hasRole(ADMIN)
                         .requestMatchers(HttpMethod.PUT, "/api/v1/services/*", "/api/v1/stylists/*").hasRole(ADMIN)
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/stylists/*/time-offs").hasRole(ADMIN)
 
                         .requestMatchers(HttpMethod.POST, "/api/v1/appointments").hasRole(CUSTOMER)
                         .requestMatchers(HttpMethod.POST, "/api/v1/appointments/*/cancel").hasAnyRole(CUSTOMER, ADMIN)
-                        .requestMatchers(HttpMethod.POST, "/api/v1/appointments/*/confirm",
-                                "/api/v1/appointments/*/complete", "/api/v1/appointments/*/no-show").hasAnyRole(STYLIST, ADMIN)
+                        .requestMatchers(HttpMethod.POST, "/api/v1/appointments/*/complete",
+                                "/api/v1/appointments/*/no-show").hasAnyRole(STYLIST, ADMIN)
 
                         .anyRequest().denyAll())
                 .oauth2ResourceServer(server -> server
@@ -136,7 +137,7 @@ public class SecurityConfig {
     CorsConfigurationSource corsConfigurationSource(SecurityProperties properties) {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(properties.allowedOrigins());
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "OPTIONS"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of(HttpHeaders.AUTHORIZATION, HttpHeaders.CONTENT_TYPE, "X-Ozin-Client"));
         configuration.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

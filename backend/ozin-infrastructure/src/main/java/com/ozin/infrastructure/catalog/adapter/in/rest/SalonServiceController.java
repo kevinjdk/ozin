@@ -64,36 +64,41 @@ class SalonServiceController {
     @Operation(summary = "Crea un servicio")
     SalonServiceResponse create(@Valid @RequestBody CreateSalonServiceRequest request) {
         return SalonServiceResponse.from(createService.create(new CreateSalonServiceUseCase.Command(
-                request.name(), Duration.ofMinutes(request.durationMinutes()), Money.usd(request.price()))));
+                request.name(), request.description(), Duration.ofMinutes(request.durationMinutes()),
+                Money.usd(request.price()))));
     }
 
     @PutMapping("/{id}")
     @Operation(summary = "Actualiza un servicio; las citas ya reservadas conservan su precio")
     SalonServiceResponse update(@PathVariable UUID id, @Valid @RequestBody UpdateSalonServiceRequest request) {
         return SalonServiceResponse.from(updateService.update(new UpdateSalonServiceUseCase.Command(
-                SalonServiceId.of(id), request.name(), Duration.ofMinutes(request.durationMinutes()),
-                Money.usd(request.price()), request.active())));
+                SalonServiceId.of(id), request.name(), request.description(),
+                Duration.ofMinutes(request.durationMinutes()), Money.usd(request.price()), request.active())));
     }
 
+    /** La descripción es opcional: omitirla equivale a dejarla vacía. */
     record CreateSalonServiceRequest(
             @NotBlank @Size(max = 120) String name,
+            @Size(max = SalonService.MAX_DESCRIPTION_LENGTH) String description,
             @NotNull @Min(1) @Max(480) Integer durationMinutes,
             @NotNull @PositiveOrZero BigDecimal price) {
     }
 
     record UpdateSalonServiceRequest(
             @NotBlank @Size(max = 120) String name,
+            @Size(max = SalonService.MAX_DESCRIPTION_LENGTH) String description,
             @NotNull @Min(1) @Max(480) Integer durationMinutes,
             @NotNull @PositiveOrZero BigDecimal price,
             @NotNull Boolean active) {
     }
 
-    record SalonServiceResponse(UUID id, String name, long durationMinutes, BigDecimal price, String currency,
-                                boolean active) {
+    record SalonServiceResponse(UUID id, String name, String description, long durationMinutes, BigDecimal price,
+                                String currency, boolean active) {
 
         static SalonServiceResponse from(SalonService service) {
-            return new SalonServiceResponse(service.id().value(), service.name(), service.duration().toMinutes(),
-                    service.price().amount(), service.price().currency().getCurrencyCode(), service.isActive());
+            return new SalonServiceResponse(service.id().value(), service.name(), service.description(),
+                    service.duration().toMinutes(), service.price().amount(),
+                    service.price().currency().getCurrencyCode(), service.isActive());
         }
     }
 }

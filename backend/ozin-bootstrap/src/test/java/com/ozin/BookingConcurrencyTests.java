@@ -69,7 +69,7 @@ class BookingConcurrencyTests extends ApiTestSupport {
     }
 
     private Integer activeAppointments() {
-        return jdbc.queryForObject("SELECT count(*) FROM appointment WHERE status = 'PENDING'", Integer.class);
+        return jdbc.queryForObject("SELECT count(*) FROM appointment WHERE status = 'CONFIRMED'", Integer.class);
     }
 
     @Test
@@ -114,7 +114,7 @@ class BookingConcurrencyTests extends ApiTestSupport {
                 SalonServiceId.of(UUID.fromString(haircut)),
                 BranchId.of(UUID.fromString(DEFAULT_BRANCH)),
                 TimeSlot.of(at(MONDAY + "T10:30"), Duration.ofMinutes(45)),
-                Money.usd("12.00"), AppointmentStatus.PENDING, null);
+                Money.usd("12.00"), AppointmentStatus.CONFIRMED, null);
 
         assertThatThrownBy(() -> saveAppointments.save(overlapping))
                 .isInstanceOf(BusinessRuleViolationException.class)

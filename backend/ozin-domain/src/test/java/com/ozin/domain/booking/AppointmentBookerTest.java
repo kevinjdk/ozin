@@ -59,10 +59,10 @@ class AppointmentBookerTest {
     class SuccessfulBooking {
 
         @Test
-        void createsPendingAppointmentWithFrozenPriceAndStylistBranch() {
+        void createsConfirmedAppointmentWithFrozenPriceAndStylistBranch() {
             Appointment appointment = book("2026-11-09T10:00");
 
-            assertThat(appointment.status()).isEqualTo(AppointmentStatus.PENDING);
+            assertThat(appointment.status()).isEqualTo(AppointmentStatus.CONFIRMED);
             assertThat(appointment.customerId()).isEqualTo(customer);
             assertThat(appointment.stylistId()).isEqualTo(ana.id());
             assertThat(appointment.branchId()).isEqualTo(BRANCH);                     // RN-13
@@ -85,7 +85,7 @@ class AppointmentBookerTest {
 
         @Test
         void rn01_rejectsOverlapWithAnActiveAppointment() {
-            Appointment existing = appointment(ana, "2026-11-09T10:30", Duration.ofMinutes(45), AppointmentStatus.PENDING);
+            Appointment existing = appointment(ana, "2026-11-09T10:30", Duration.ofMinutes(45), AppointmentStatus.CONFIRMED);
 
             assertViolates("RN-01", () -> book(ana, HAIRCUT, "2026-11-09T10:00", List.of(existing), 0, NOW));
         }
@@ -96,7 +96,7 @@ class AppointmentBookerTest {
 
             Appointment appointment = book(ana, HAIRCUT, "2026-11-09T10:00", List.of(cancelled), 0, NOW);
 
-            assertThat(appointment.status()).isEqualTo(AppointmentStatus.PENDING);
+            assertThat(appointment.status()).isEqualTo(AppointmentStatus.CONFIRMED);
         }
 
         @Test
@@ -106,7 +106,7 @@ class AppointmentBookerTest {
 
             Appointment appointment = book(ana, HAIRCUT, "2026-11-09T10:00", List.of(otherStylists), 0, NOW);
 
-            assertThat(appointment.status()).isEqualTo(AppointmentStatus.PENDING);
+            assertThat(appointment.status()).isEqualTo(AppointmentStatus.CONFIRMED);
         }
 
         @Test
@@ -141,7 +141,7 @@ class AppointmentBookerTest {
         void rn04_acceptsBookingWithExactlyOneHourNotice() {
             Appointment appointment = book(ana, HAIRCUT, "2026-11-09T10:00", List.of(), 0, at("2026-11-09T09:00"));
 
-            assertThat(appointment.status()).isEqualTo(AppointmentStatus.PENDING);
+            assertThat(appointment.status()).isEqualTo(AppointmentStatus.CONFIRMED);
         }
 
         @Test
@@ -163,7 +163,7 @@ class AppointmentBookerTest {
 
         @Test
         void rejectsInactiveService() {
-            SalonService inactive = new SalonService(SalonServiceId.newId(), "Peinado", Duration.ofMinutes(30),
+            SalonService inactive = new SalonService(SalonServiceId.newId(), "Peinado", "", Duration.ofMinutes(30),
                     Money.usd("10.00"), false);
             Stylist stylist = new Stylist(StylistId.newId(), BRANCH, "Luis", true, Set.of(inactive.id()),
                     MONDAY_SHIFTS, List.of());

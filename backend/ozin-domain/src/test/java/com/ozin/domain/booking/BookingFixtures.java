@@ -31,9 +31,9 @@ final class BookingFixtures {
     static final ZoneId ZONE = ZoneId.of("America/Guayaquil");
     static final BranchId BRANCH = BranchId.newId();
     static final SalonService HAIRCUT = new SalonService(
-            SalonServiceId.newId(), "Corte", Duration.ofMinutes(45), Money.usd("12.00"), true);
+            SalonServiceId.newId(), "Corte", "", Duration.ofMinutes(45), Money.usd("12.00"), true);
     static final SalonService COLORING = new SalonService(
-            SalonServiceId.newId(), "Tinte", Duration.ofMinutes(90), Money.usd("35.00"), true);
+            SalonServiceId.newId(), "Tinte", "", Duration.ofMinutes(90), Money.usd("35.00"), true);
     static final List<WorkingHours> MONDAY_SHIFTS = List.of(
             new WorkingHours(DayOfWeek.MONDAY, LocalTime.of(9, 0), LocalTime.of(13, 0)),
             new WorkingHours(DayOfWeek.MONDAY, LocalTime.of(14, 0), LocalTime.of(18, 0)));

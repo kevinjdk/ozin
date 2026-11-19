@@ -14,24 +14,29 @@ import java.util.Objects;
 public final class SalonService {
 
     private static final Duration MAX_DURATION = Duration.ofHours(8);
+    public static final int MAX_DESCRIPTION_LENGTH = 500;
 
     private final SalonServiceId id;
     private String name;
+    private String description;
     private Duration duration;
     private Money price;
     private boolean active;
 
-    public SalonService(SalonServiceId id, String name, Duration duration, Money price, boolean active) {
+    public SalonService(SalonServiceId id, String name, String description, Duration duration, Money price,
+                        boolean active) {
         this.id = Objects.requireNonNull(id, "id");
         this.name = requireName(name);
+        this.description = normalizeDescription(description);
         this.duration = requireDuration(duration);
         this.price = Objects.requireNonNull(price, "price");
         this.active = active;
     }
 
     /** Cambiar el precio no afecta a las citas ya reservadas, que lo tienen congelado (RN-09). */
-    public void revise(String name, Duration duration, Money price, boolean active) {
+    public void revise(String name, String description, Duration duration, Money price, boolean active) {
         this.name = requireName(name);
+        this.description = normalizeDescription(description);
         this.duration = requireDuration(duration);
         this.price = Objects.requireNonNull(price, "price");
         this.active = active;
@@ -53,6 +58,16 @@ public final class SalonService {
         return name.strip();
     }
 
+    /** La descripción es opcional: se guarda vacía en lugar de nula para que nadie tenga que comprobarlo. */
+    private static String normalizeDescription(String description) {
+        String value = description == null ? "" : description.strip();
+        if (value.length() > MAX_DESCRIPTION_LENGTH) {
+            throw new DomainValidationException(
+                    "La descripción del servicio no puede superar los %d caracteres".formatted(MAX_DESCRIPTION_LENGTH));
+        }
+        return value;
+    }
+
     private static Duration requireDuration(Duration duration) {
         Objects.requireNonNull(duration, "duration");
         if (duration.isNegative() || duration.isZero() || duration.compareTo(MAX_DURATION) > 0) {
@@ -67,6 +82,10 @@ public final class SalonService {
 
     public String name() {
         return name;
+    }
+
+    public String description() {
+        return description;
     }
 
     public Duration duration() {

@@ -70,7 +70,7 @@ class BookAppointmentServiceTest {
 
     private final BranchId branchId = BranchId.newId();
     private final SalonService haircut = new SalonService(
-            SalonServiceId.newId(), "Corte", Duration.ofMinutes(45), Money.usd("12.00"), true);
+            SalonServiceId.newId(), "Corte", "", Duration.ofMinutes(45), Money.usd("12.00"), true);
     private final Stylist stylist = new Stylist(StylistId.newId(), branchId, "Ana", true, Set.of(haircut.id()),
             List.of(new WorkingHours(DayOfWeek.MONDAY, LocalTime.of(9, 0), LocalTime.of(18, 0))), List.of());
     private final CustomerId customerId = CustomerId.newId();
@@ -104,7 +104,7 @@ class BookAppointmentServiceTest {
 
         Appointment appointment = service.book(command());
 
-        assertThat(appointment.status()).isEqualTo(AppointmentStatus.PENDING);
+        assertThat(appointment.status()).isEqualTo(AppointmentStatus.CONFIRMED);
         InOrder inOrder = Mockito.inOrder(saveAppointments, notifications);
         inOrder.verify(saveAppointments).save(appointment);
         inOrder.verify(notifications).appointmentBooked(appointment);

@@ -48,6 +48,7 @@ class SalonServicePersistenceAdapter implements LoadSalonServicePort, SaveSalonS
         SalonServiceJpaEntity entity = repository.findById(service.id().value())
                 .orElseGet(() -> new SalonServiceJpaEntity(service.id().value()));
         entity.name = service.name();
+        entity.description = service.description();
         entity.durationMinutes = Math.toIntExact(service.duration().toMinutes());
         entity.price = service.price().amount();
         entity.currency = service.price().currency().getCurrencyCode();
@@ -56,7 +57,8 @@ class SalonServicePersistenceAdapter implements LoadSalonServicePort, SaveSalonS
     }
 
     private static SalonService toDomain(SalonServiceJpaEntity entity) {
-        return new SalonService(SalonServiceId.of(entity.id), entity.name, Duration.ofMinutes(entity.durationMinutes),
-                new Money(entity.price, Currency.getInstance(entity.currency)), entity.active);
+        return new SalonService(SalonServiceId.of(entity.id), entity.name, entity.description,
+                Duration.ofMinutes(entity.durationMinutes), new Money(entity.price, Currency.getInstance(entity.currency)),
+                entity.active);
     }
 }

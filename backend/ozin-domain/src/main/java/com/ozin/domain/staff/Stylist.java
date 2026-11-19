@@ -3,9 +3,11 @@ package com.ozin.domain.staff;
 import com.ozin.domain.branch.BranchId;
 import com.ozin.domain.catalog.SalonServiceId;
 import com.ozin.domain.shared.DomainValidationException;
+import com.ozin.domain.shared.ResourceNotFoundException;
 import com.ozin.domain.shared.TimeSlot;
 
 import java.time.DayOfWeek;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -64,6 +66,16 @@ public final class Stylist {
         List<TimeOff> updated = new ArrayList<>(timeOffs);
         updated.add(timeOff);
         this.timeOffs = List.copyOf(updated);
+    }
+
+    /** Quita la ausencia que empieza en ese instante; las ausencias de un estilista no se solapan, así que es única. */
+    public void removeTimeOff(Instant start) {
+        Objects.requireNonNull(start, "start");
+        List<TimeOff> updated = timeOffs.stream().filter(off -> !off.period().start().equals(start)).toList();
+        if (updated.size() == timeOffs.size()) {
+            throw new ResourceNotFoundException("Ausencia", start);
+        }
+        this.timeOffs = updated;
     }
 
     /** RN-03: el estilista solo atiende los servicios para los que está habilitado. */

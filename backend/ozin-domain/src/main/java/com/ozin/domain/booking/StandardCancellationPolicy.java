@@ -12,7 +12,7 @@ import java.util.Objects;
  */
 public final class StandardCancellationPolicy implements CancellationPolicy {
 
-    public static final Duration DEFAULT_MINIMUM_NOTICE = Duration.ofHours(24);
+    public static final Duration DEFAULT_MINIMUM_NOTICE = Duration.ofHours(1);
 
     private final Duration minimumNotice;
 
@@ -36,8 +36,15 @@ public final class StandardCancellationPolicy implements CancellationPolicy {
         Instant deadline = appointment.slot().start().minus(minimumNotice);
         if (now.isAfter(deadline)) {
             throw new BusinessRuleViolationException("RN-07",
-                    "Solo puedes cancelar hasta %d horas antes de la cita. Comunícate con el salón."
-                            .formatted(minimumNotice.toHours()));
+                    "Solo puedes cancelar hasta %s antes de la cita. Comunícate con el salón."
+                            .formatted(describe(minimumNotice)));
         }
+    }
+
+    private static String describe(Duration notice) {
+        if (notice.toMinutesPart() != 0 || notice.isZero()) {
+            return notice.toMinutes() + " minutos";
+        }
+        return notice.toHours() == 1 ? "1 hora" : notice.toHours() + " horas";
     }
 }

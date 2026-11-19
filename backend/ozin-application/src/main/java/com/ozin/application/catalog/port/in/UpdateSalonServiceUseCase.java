@@ -11,6 +11,7 @@ public interface UpdateSalonServiceUseCase {
 
     SalonService update(Command command);
 
-    record Command(SalonServiceId id, String name, Duration duration, Money price, boolean active) {
+    record Command(SalonServiceId id, String name, String description, Duration duration, Money price,
+                   boolean active) {
     }
 }
