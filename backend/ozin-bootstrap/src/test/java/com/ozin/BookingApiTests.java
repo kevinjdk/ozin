@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.ResultActions;
 
 import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -62,6 +63,26 @@ class BookingApiTests extends ApiTestSupport {
         }
 
         @Test
+        void hu10_servicesCarryAnOptionalDescription() throws Exception {
+            String coloring = createdId(postJson("/api/v1/services", """
+                    {"name": "Tinte", "description": "Incluye lavado y secado.", "durationMinutes": 90, "price": 35.00}
+                    """, adminToken)
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.description").value("Incluye lavado y secado.")));
+
+            putJson("/api/v1/services/" + coloring, """
+                    {"name": "Tinte", "description": "Tinte completo con lavado.", "durationMinutes": 90,
+                     "price": 35.00, "active": true}
+                    """, adminToken)
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.description").value("Tinte completo con lavado."));
+
+            mockMvc.perform(get("/api/v1/services"))
+                    .andExpect(jsonPath("$[?(@.name == 'Corte')].description").value(""))
+                    .andExpect(jsonPath("$[?(@.name == 'Tinte')].description").value("Tinte completo con lavado."));
+        }
+
+        @Test
         void exposesTheDefaultBranchWithItsTimeZone() throws Exception {
             mockMvc.perform(get("/api/v1/branches"))
                     .andExpect(status().isOk())
@@ -101,6 +122,20 @@ class BookingApiTests extends ApiTestSupport {
         }
 
         @Test
+        void hu12_removingATimeOffFreesItsSlotsAgain() throws Exception {
+            String start = at(MONDAY + "T09:00").toString();
+            postJson("/api/v1/stylists/" + ana.id() + "/time-offs", """
+                    {"start": "%s", "end": "%s"}
+                    """.formatted(start, at(MONDAY + "T13:00")), adminToken).andExpect(status().isCreated());
+
+            getWith(adminToken, delete("/api/v1/stylists/" + ana.id() + "/time-offs").param("start", start))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.timeOffs", hasSize(0)));
+
+            availability(MONDAY).andExpect(jsonPath("$", hasSize(28)));
+        }
+
+        @Test
         void hu12_rejectsOverlappingTimeOff() throws Exception {
             String body = """
                     {"start": "%s", "end": "%s"}
@@ -117,10 +152,10 @@ class BookingApiTests extends ApiTestSupport {
     class Booking {
 
         @Test
-        void hu03_createsPendingAppointmentWithFrozenPrice() throws Exception {
+        void hu03_createsConfirmedAppointmentWithFrozenPrice() throws Exception {
             book(customer, ana.id(), haircut, MONDAY + "T10:00")
                     .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.status").value("PENDING"))
+                    .andExpect(jsonPath("$.status").value("CONFIRMED"))
                     .andExpect(jsonPath("$.customerId").value(customer.id()))
                     .andExpect(jsonPath("$.price").value(12.00))
                     .andExpect(jsonPath("$.branchId").value(DEFAULT_BRANCH))
@@ -198,7 +233,7 @@ class BookingApiTests extends ApiTestSupport {
         @Test
         void rn07_customerCannotCancelLate_butAdminCan() throws Exception {
             String appointment = bookedAppointment(NEXT_MONDAY + "T10:00");
-            clock.set(at(NEXT_MONDAY + "T09:00"));
+            clock.set(at(NEXT_MONDAY + "T09:30"));
 
             cancel(appointment, customer.token())
                     .andExpect(status().isUnprocessableContent())
@@ -210,12 +245,8 @@ class BookingApiTests extends ApiTestSupport {
         }
 
         @Test
-        void hu09_stylistTakesTheAppointmentFromPendingToCompleted() throws Exception {
+        void hu09_stylistCompletesTheAppointmentOnceItStarts() throws Exception {
             String appointment = bookedAppointment(MONDAY + "T10:00");
-
-            postJson("/api/v1/appointments/" + appointment + "/confirm", "", ana.token())
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.status").value("CONFIRMED"));
 
             postJson("/api/v1/appointments/" + appointment + "/complete", "", ana.token())
                     .andExpect(status().isConflict())
@@ -230,7 +261,6 @@ class BookingApiTests extends ApiTestSupport {
         @Test
         void hu09_confirmedAppointmentCanBeMarkedAsNoShow() throws Exception {
             String appointment = bookedAppointment(MONDAY + "T10:00");
-            postJson("/api/v1/appointments/" + appointment + "/confirm", "", ana.token()).andExpect(status().isOk());
             clock.set(at(MONDAY + "T10:20"));
 
             postJson("/api/v1/appointments/" + appointment + "/no-show", "", ana.token())
@@ -354,7 +384,7 @@ class BookingApiTests extends ApiTestSupport {
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"));
 
-            postJson("/api/v1/appointments/00000000-0000-0000-0000-00000000dead/confirm", "", adminToken)
+            postJson("/api/v1/appointments/00000000-0000-0000-0000-00000000dead/complete", "", adminToken)
                     .andExpect(status().isNotFound());
         }
 

@@ -18,7 +18,7 @@ import java.util.Optional;
  * Cita reservada por un cliente. Raíz de agregado del módulo de reservas.
  *
  * <p>Modelo rico: el estado solo cambia mediante métodos que aplican las reglas
- * ({@link #confirm()}, {@link #cancel}, {@link #complete}, {@link #markNoShow}); no existen setters.
+ * ({@link #cancel}, {@link #complete}, {@link #markNoShow}); no existen setters.
  *
  * <p>Las citas nuevas solo se crean a través de {@link AppointmentBooker}, que valida todas las
  * reglas de reserva; por eso {@link #book} es de visibilidad de paquete.
@@ -49,11 +49,14 @@ public final class Appointment {
         this.cancelledBy = cancelledBy;
     }
 
-    /** Crea una cita nueva en estado {@code PENDING}. El precio queda congelado (RN-09). */
+    /**
+     * Crea una cita nueva, ya confirmada: el horario estaba libre y el estilista disponible, así que no
+     * hace falta que nadie la apruebe. El precio queda congelado (RN-09).
+     */
     static Appointment book(CustomerId customerId, StylistId stylistId, SalonServiceId serviceId,
                             BranchId branchId, TimeSlot slot, Money price) {
         return new Appointment(AppointmentId.newId(), customerId, stylistId, serviceId, branchId,
-                slot, price, AppointmentStatus.PENDING, null);
+                slot, price, AppointmentStatus.CONFIRMED, null);
     }
 
     /** Reconstruye una cita existente (por ejemplo, desde la base de datos). No aplica reglas de reserva. */
@@ -61,11 +64,6 @@ public final class Appointment {
                                       SalonServiceId serviceId, BranchId branchId, TimeSlot slot, Money price,
                                       AppointmentStatus status, CancellationActor cancelledBy) {
         return new Appointment(id, customerId, stylistId, serviceId, branchId, slot, price, status, cancelledBy);
-    }
-
-    public void confirm() {
-        requireStatus(AppointmentStatus.PENDING, "confirmar");
-        status = AppointmentStatus.CONFIRMED;
     }
 
     public void cancel(CancellationActor actor, Instant now, CancellationPolicy policy) {

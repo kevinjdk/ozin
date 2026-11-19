@@ -39,6 +39,9 @@
               @for (service of list; track service.id) {
                 <button type="button" class="choice" (click)="draft.chooseService(service)">
                   <span class="choice__title">{{ service.name }}</span>
+                  @if (service.description) {
+                    <span class="choice__description">{{ service.description }}</span>
+                  }
                   <span class="choice__meta">{{ service.durationMinutes }} min · {{ money(service.price, service.currency) }}</span>
                 </button>
               }
@@ -113,7 +116,7 @@
             <dt>Precio</dt>
             <dd>{{ money(draft.service()!.price, draft.service()!.currency) }}</dd>
           </dl>
-          <p class="muted summary__note">Puedes cancelar hasta 24 horas antes de la cita.</p>
+          <p class="muted summary__note">Puedes cancelar hasta 1 hora antes de la cita.</p>
 
           @if (auth.isAuthenticated() && auth.role() !== 'CUSTOMER') {
             <p-message severity="warn">Solo las cuentas de cliente pueden reservar.</p-message>

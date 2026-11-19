@@ -7,7 +7,10 @@ import { InputTextModule } from 'primeng/inputtext';
 import { SkeletonModule } from 'primeng/skeleton';
 import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
+import { TextareaModule } from 'primeng/textarea';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
+
+const MAX_DESCRIPTION = 500;
 
 import { SalonService } from '../../../core/api/models';
 import { SalonApi } from '../../../core/api/salon.api';
@@ -27,9 +30,25 @@ import { formatMoney } from '../../../core/time/salon-time';
     SkeletonModule,
     TableModule,
     TagModule,
+    TextareaModule,
     ToggleSwitchModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  styles: `
+    .service-name {
+      display: grid;
+      gap: 0.125rem;
+      max-width: 28rem;
+    }
+    .service-name small {
+      color: var(--ozin-muted);
+      font-size: 0.8125rem;
+      line-height: 1.4;
+    }
+    .field__counter {
+      justify-self: end;
+    }
+  `,
   template: `
     <div class="page">
       <header class="page__header">
@@ -54,15 +73,24 @@ import { formatMoney } from '../../../core/time/salon-time';
             </ng-template>
             <ng-template #body let-service>
               <tr>
-                <td>{{ service.name }}</td>
+                <td>
+                  <div class="service-name">
+                    <span>{{ service.name }}</span>
+                    @if (service.description) {
+                      <small>{{ service.description }}</small>
+                    }
+                  </div>
+                </td>
                 <td>{{ service.durationMinutes }} min</td>
                 <td>{{ money(service) }}</td>
                 <td>
                   <p-tag [value]="service.active ? 'Activo' : 'Inactivo'" [severity]="service.active ? 'success' : 'secondary'" />
                 </td>
-                <td class="table-actions">
-                  <p-button label="Editar" size="small" severity="secondary" [outlined]="true"
-                            [ariaLabel]="'Editar ' + service.name" (onClick)="openEdit(service)" />
+                <td>
+                  <div class="table-actions">
+                    <p-button label="Editar" size="small" severity="secondary" [outlined]="true"
+                              [ariaLabel]="'Editar ' + service.name" (onClick)="openEdit(service)" />
+                  </div>
                 </td>
               </tr>
             </ng-template>
@@ -90,6 +118,14 @@ import { formatMoney } from '../../../core/time/salon-time';
           @if (form.controls.name.touched && form.controls.name.invalid) {
             <small class="field__error">Escribe un nombre.</small>
           }
+        </div>
+        <div class="field">
+          <label for="service-description">Descripción (opcional)</label>
+          <textarea pTextarea id="service-description" formControlName="description" rows="3" [autoResize]="true"
+                    [attr.maxlength]="maxDescription" aria-describedby="service-description-hint"></textarea>
+          <small id="service-description-hint" class="field__hint field__counter">
+            {{ form.controls.description.value?.length ?? 0 }}/{{ maxDescription }}
+          </small>
         </div>
         <div class="field">
           <label for="service-duration">Duración (minutos)</label>
@@ -129,9 +165,11 @@ export class AdminServicesPage implements OnInit {
   protected readonly dialogOpen = signal(false);
   protected readonly editingId = signal<string | null>(null);
   protected readonly saving = signal(false);
+  protected readonly maxDescription = MAX_DESCRIPTION;
 
   protected readonly form = inject(FormBuilder).group({
     name: ['', [Validators.required, Validators.maxLength(120)]],
+    description: ['', Validators.maxLength(MAX_DESCRIPTION)],
     durationMinutes: [30 as number | null, [Validators.required, Validators.min(1), Validators.max(480)]],
     price: [null as number | null, [Validators.required, Validators.min(0)]],
     active: [true],
@@ -155,7 +193,7 @@ export class AdminServicesPage implements OnInit {
 
   protected openCreate(): void {
     this.editingId.set(null);
-    this.form.reset({ name: '', durationMinutes: 30, price: null, active: true });
+    this.form.reset({ name: '', description: '', durationMinutes: 30, price: null, active: true });
     this.dialogOpen.set(true);
   }
 
@@ -163,6 +201,7 @@ export class AdminServicesPage implements OnInit {
     this.editingId.set(service.id);
     this.form.reset({
       name: service.name,
+      description: service.description,
       durationMinutes: service.durationMinutes,
       price: service.price,
       active: service.active,
@@ -176,7 +215,12 @@ export class AdminServicesPage implements OnInit {
       return;
     }
     const value = this.form.getRawValue();
-    const input = { name: value.name!, durationMinutes: value.durationMinutes!, price: value.price! };
+    const input = {
+      name: value.name!,
+      description: value.description ?? '',
+      durationMinutes: value.durationMinutes!,
+      price: value.price!,
+    };
     const id = this.editingId();
     const request = id
       ? this.api.updateService(id, { ...input, active: value.active! })

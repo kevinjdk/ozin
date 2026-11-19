@@ -26,13 +26,13 @@ class AppointmentOptimisticLockingTests extends ApiTestSupport {
         AppointmentJpaEntity first = repository.findById(id).orElseThrow();
         AppointmentJpaEntity stale = repository.findById(id).orElseThrow();
 
-        first.status = AppointmentStatus.CONFIRMED;
+        first.status = AppointmentStatus.COMPLETED;
         repository.saveAndFlush(first);
 
         stale.status = AppointmentStatus.CANCELLED;
         assertThatThrownBy(() -> repository.saveAndFlush(stale))
                 .isInstanceOf(OptimisticLockingFailureException.class);
 
-        assertThat(repository.findById(id).orElseThrow().status).isEqualTo(AppointmentStatus.CONFIRMED);
+        assertThat(repository.findById(id).orElseThrow().status).isEqualTo(AppointmentStatus.COMPLETED);
     }
 }

@@ -16,6 +16,7 @@ import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.containsString;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -84,7 +85,8 @@ class SecurityApiTests extends ApiTestSupport {
                 "POST, /api/v1/stylists",
                 "POST, /api/v1/appointments",
                 "POST, /api/v1/appointments/00000000-0000-0000-0000-000000000001/cancel",
-                "POST, /api/v1/appointments/00000000-0000-0000-0000-000000000001/confirm",
+                "POST, /api/v1/appointments/00000000-0000-0000-0000-000000000001/complete",
+                "DELETE, /api/v1/stylists/00000000-0000-0000-0000-000000000001/time-offs",
                 "GET,  /api/v1/ruta-inexistente",
                 "GET,  /actuator/env"
         })
@@ -164,7 +166,7 @@ class SecurityApiTests extends ApiTestSupport {
                     .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
 
             getWith(customer.token(), "/api/v1/customers/me/appointments")
-                    .andExpect(jsonPath("$.items[0].status").value("PENDING"));
+                    .andExpect(jsonPath("$.items[0].status").value("CONFIRMED"));
         }
 
         @Test
@@ -179,7 +181,7 @@ class SecurityApiTests extends ApiTestSupport {
         void aCustomerCannotManageAppointmentStates() throws Exception {
             String appointment = createdId(book(customer, ana.id(), haircut, MONDAY + "T10:00"));
 
-            postJson("/api/v1/appointments/" + appointment + "/confirm", "", customer.token())
+            postJson("/api/v1/appointments/" + appointment + "/complete", "", customer.token())
                     .andExpect(status().isForbidden());
         }
 
@@ -187,7 +189,7 @@ class SecurityApiTests extends ApiTestSupport {
         void aStylistCannotManageAnotherStylistsAppointment() throws Exception {
             String appointment = createdId(book(customer, ana.id(), haircut, MONDAY + "T10:00"));
 
-            postJson("/api/v1/appointments/" + appointment + "/confirm", "", createStylist(haircut).token())
+            postJson("/api/v1/appointments/" + appointment + "/complete", "", createStylist(haircut).token())
                     .andExpect(status().isForbidden());
         }
 
@@ -549,14 +551,31 @@ class SecurityApiTests extends ApiTestSupport {
 
         @Test
         void allowsTheConfiguredFrontend() throws Exception {
-            preflightFrom("http://localhost:4200")
+            preflightFrom("http://localhost:4300")
                     .andExpect(status().isOk())
-                    .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "http://localhost:4200"));
+                    .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "http://localhost:4300"));
         }
 
         @Test
         void rejectsOtherOrigins() throws Exception {
             preflightFrom("https://sitio-malicioso.example").andExpect(status().isForbidden());
+        }
+
+        /** El navegador envía Origin también en las peticiones del mismo sitio que no son GET. */
+        @Test
+        void allowsDeletingTimeOffFromTheFrontend() throws Exception {
+            mockMvc.perform(options("/api/v1/stylists/" + ana.id() + "/time-offs")
+                            .header(HttpHeaders.ORIGIN, "http://localhost:4300")
+                            .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "DELETE"))
+                    .andExpect(status().isOk());
+
+            String start = at(MONDAY + "T09:00").toString();
+            postJson("/api/v1/stylists/" + ana.id() + "/time-offs", """
+                    {"start": "%s", "end": "%s"}
+                    """.formatted(start, at(MONDAY + "T13:00")), adminToken).andExpect(status().isCreated());
+            getWith(adminToken, delete("/api/v1/stylists/" + ana.id() + "/time-offs").param("start", start)
+                    .header(HttpHeaders.ORIGIN, "http://localhost:4300"))
+                    .andExpect(status().isOk());
         }
     }
 }

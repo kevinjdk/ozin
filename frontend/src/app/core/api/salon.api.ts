@@ -24,7 +24,7 @@ export interface AgendaRange {
   to: string;
 }
 
-export type AppointmentAction = 'confirm' | 'complete' | 'no-show' | 'cancel';
+export type AppointmentAction = 'complete' | 'no-show' | 'cancel';
 
 /** Puerta de entrada a la API de negocio. La autenticación la añade el interceptor. */
 @Injectable({ providedIn: 'root' })
@@ -70,6 +70,12 @@ export class SalonApi {
 
   addTimeOff(stylistId: string, timeOff: TimeOff): Observable<Stylist> {
     return this.http.post<Stylist>(`${API}/stylists/${stylistId}/time-offs`, timeOff);
+  }
+
+  /** Una ausencia se identifica por su inicio: las de un mismo estilista no se solapan. */
+  removeTimeOff(stylistId: string, start: string): Observable<Stylist> {
+    const params = new HttpParams().set('start', start);
+    return this.http.delete<Stylist>(`${API}/stylists/${stylistId}/time-offs`, { params });
   }
 
   availability(stylistId: string, serviceId: string, date: string): Observable<Slot[]> {

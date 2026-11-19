@@ -11,8 +11,8 @@ desde el código (Javadoc) y desde los tests, para mantener trazabilidad requisi
 | **RN-04** | Anticipación mínima para reservar. | 1 hora | Dominio (política configurable) |
 | **RN-05** | Anticipación máxima para reservar. | 30 días | Dominio (política configurable) |
 | **RN-06** | Granularidad de los horarios disponibles ofrecidos. | 15 minutos | Dominio |
-| **RN-07** | El cliente solo puede cancelar hasta cierto tiempo antes de la cita; después solo el administrador. | 24 horas | Dominio (`CancellationPolicy`) |
-| **RN-08** | Máximo de citas futuras activas (`PENDING`/`CONFIRMED`) por cliente. | 3 | Dominio + bloqueo del cliente al reservar (ADR-0007) |
+| **RN-07** | El cliente solo puede cancelar hasta cierto tiempo antes de la cita; después solo el administrador. | 1 hora | Dominio (`CancellationPolicy`) |
+| **RN-08** | Máximo de citas futuras activas (`CONFIRMED`) por cliente. | 3 | Dominio + bloqueo del cliente al reservar (ADR-0007) |
 | **RN-09** | El precio del servicio se congela en la cita al momento de reservar. | — | Dominio |
 | **RN-10** | Una cita corresponde a un único servicio (MVP). | — | Dominio |
 | **RN-11** | Las fechas se almacenan en UTC (`timestamptz`) y se muestran en la zona horaria de la sede. | `America/Guayaquil` | Infraestructura + Frontend |
@@ -22,13 +22,16 @@ desde el código (Javadoc) y desde los tests, para mantener trazabilidad requisi
 
 ## Transiciones de estado de una cita
 
+Una cita nace **confirmada**: si el horario estaba libre y el estilista disponible, la reserva ya está
+asegurada y nadie tiene que aprobarla. Por eso no existe un estado pendiente.
+
 | Desde | Hacia | Quién | Condición |
 |---|---|---|---|
-| `PENDING` | `CONFIRMED` | Estilista / Admin | — |
-| `PENDING`, `CONFIRMED` | `CANCELLED` | Cliente | Respetando RN-07 |
-| `PENDING`, `CONFIRMED` | `CANCELLED` | Admin | Sin restricción de tiempo |
-| `CONFIRMED` | `COMPLETED` | Estilista / Admin | La hora de inicio ya pasó |
-| `CONFIRMED` | `NO_SHOW` | Estilista / Admin | La hora de inicio ya pasó |
+| — | `CONFIRMED` | Cliente | Al reservar, si se cumplen RN-01 a RN-08 |
+| `CONFIRMED` | `CANCELLED` | Cliente | Respetando RN-07 |
+| `CONFIRMED` | `CANCELLED` | Admin | Sin restricción de tiempo |
+| `CONFIRMED` | `COMPLETED` | Estilista / Admin | El cliente asistió; la hora de inicio ya pasó |
+| `CONFIRMED` | `NO_SHOW` | Estilista / Admin | El cliente no asistió; la hora de inicio ya pasó |
 
 Cualquier otra transición es inválida y produce una excepción de dominio.
 

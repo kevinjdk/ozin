@@ -1,7 +1,7 @@
 import { PublicStylist, SalonService, Slot } from '../../../core/api/models';
 import { BookingDraft } from './booking-draft.service';
 
-const SERVICE: SalonService = { id: 's', name: 'Corte', durationMinutes: 45, price: 12, currency: 'USD', active: true };
+const SERVICE: SalonService = { id: 's', name: 'Corte', description: '', durationMinutes: 45, price: 12, currency: 'USD', active: true };
 const STYLIST: PublicStylist = { id: 'e', branchId: 'b', fullName: 'Ana', serviceIds: ['s'] };
 const SLOT: Slot = { start: '2026-11-09T15:00:00Z', end: '2026-11-09T15:45:00Z' };
 

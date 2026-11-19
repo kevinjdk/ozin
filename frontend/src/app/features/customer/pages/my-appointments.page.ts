@@ -14,7 +14,8 @@ import { AppointmentStatusTag } from '../../../shared/ui/appointment-status-tag'
 
 const PAGE_SIZE = 10;
 /** RN-07: el backend lo vuelve a comprobar; aquí evita ofrecer un botón que fallaría. */
-const CANCELLATION_NOTICE_MS = 24 * 60 * 60 * 1000;
+/** RN-07: el cliente puede cancelar hasta 1 hora antes; después, solo el salón. */
+const CANCELLATION_NOTICE_MS = 60 * 60 * 1000;
 
 /** HU-04 y HU-05. */
 @Component({
@@ -115,7 +116,7 @@ export class MyAppointmentsPage implements OnInit {
 
   protected isActive(appointment: AppointmentView): boolean {
     return (
-      (appointment.status === 'PENDING' || appointment.status === 'CONFIRMED') &&
+      appointment.status === 'CONFIRMED' &&
       new Date(appointment.start).getTime() > Date.now()
     );
   }

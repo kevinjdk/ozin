@@ -20,7 +20,7 @@ Prioridad según MoSCoW: **M** = Must, **S** = Should, **C** = Could.
 ### HU-03 · Reservar una cita — M
 **Como** cliente **quiero** reservar un horario **para** asegurar mi atención.
 
-- **Dado** un horario libre, **cuando** reservo, **entonces** la cita queda en `PENDING` con el precio congelado (RN-09) y recibo un email de confirmación.
+- **Dado** un horario libre, **cuando** reservo, **entonces** la cita queda confirmada (`CONFIRMED`) con el precio congelado (RN-09) y recibo un email de confirmación.
 - **Dado** que otro cliente reservó el mismo horario segundos antes, **cuando** reservo, **entonces** recibo un error de conflicto (HTTP 409) (RN-01).
 - **Dado** que ya tengo 3 citas activas, **cuando** intento reservar, **entonces** el sistema lo rechaza (RN-08).
 - **Dado** un horario a menos de 1 hora, **cuando** reservo, **entonces** el sistema lo rechaza (RN-04).
@@ -31,8 +31,8 @@ Prioridad según MoSCoW: **M** = Must, **S** = Should, **C** = Could.
 ### HU-05 · Cancelar una cita — M
 **Como** cliente **quiero** cancelar una cita **para** liberar el horario.
 
-- **Dado** una cita a más de 24 h, **cuando** cancelo, **entonces** pasa a `CANCELLED` y recibo un email.
-- **Dado** una cita a menos de 24 h, **cuando** intento cancelar, **entonces** el sistema lo rechaza indicando que contacte al salón (RN-07).
+- **Dado** una cita a más de 1 hora, **cuando** cancelo, **entonces** pasa a `CANCELLED` y recibo un email.
+- **Dado** una cita a menos de 1 hora, **cuando** intento cancelar, **entonces** el sistema lo rechaza indicando que contacte al salón (RN-07).
 
 ## Épica 2 — Identidad y acceso
 
@@ -48,21 +48,39 @@ Prioridad según MoSCoW: **M** = Must, **S** = Should, **C** = Could.
 ## Épica 3 — Estilista
 
 ### HU-08 · Ver mi agenda — M
-**Como** estilista **quiero** ver mi agenda diaria y semanal.
+**Como** estilista **quiero** ver mi agenda en un calendario mensual **para** saber de un vistazo qué días tengo citas.
 
-### HU-09 · Actualizar estado de una cita — M
-**Como** estilista **quiero** confirmar, completar o marcar "no asistió" una cita.
+- El calendario del mes está a la izquierda; los días con al menos una cita (sin contar las canceladas) se pintan de rojo.
+- Al elegir un día, a la derecha se listan sus citas separadas por hora.
+
+### HU-09 · Registrar la asistencia — M
+**Como** estilista **quiero** marcar si el cliente asistió o no **para** llevar el control de mis citas.
+
+- Las citas llegan ya confirmadas: el estilista no tiene que aprobarlas.
+- Una vez llegada la hora de inicio, la cita se marca como "asistió" (`COMPLETED`) o "no asistió" (`NO_SHOW`).
 
 ## Épica 4 — Administración
 
 ### HU-10 · Gestionar catálogo de servicios — M
-CRUD de servicios; activar y desactivar sin borrar el histórico.
+CRUD de servicios con nombre, descripción opcional (hasta 500 caracteres), duración y precio;
+activar y desactivar sin borrar el histórico. La descripción se muestra al cliente en el catálogo y al reservar.
 
 ### HU-11 · Gestionar estilistas — M
 Alta, edición, baja lógica y asignación de servicios que realiza cada estilista.
 
 ### HU-12 · Gestionar horarios y ausencias — M
-Definir horario laboral por día de la semana y registrar ausencias (vacaciones, permisos).
+Configurar el horario desde la ficha del estilista y registrar ausencias (vacaciones, permisos).
+
+- Todo estilista nuevo empieza con el horario fijo: de lunes a sábado, de 09:00 a 18:00 con pausa al mediodía de
+  13:00 a 14:00, y el domingo libre.
+- El día libre se elige marcando los días que trabaja.
+- **Fijo:** un horario para entre semana (lunes a viernes) y otro para el fin de semana, cada uno con su pausa.
+- **Personalizado:** un horario por día que parte del fijo, para cambiar solo el día que lo necesite.
+- La pausa al mediodía se activa con una casilla, marcada por defecto; desmarcada, la jornada es continua.
+- El formulario resume la pausa tal como está configurada, por ejemplo "Este horario tiene definida la pausa al
+  mediodía de 13:00 a 14:00".
+- Una ausencia puede ser de uno o varios días completos, o de unas horas de un mismo día; se puede eliminar si ya no aplica.
+- Ni el horario ni las ausencias cancelan las citas ya reservadas: el administrador las revisa en la agenda.
 
 ### HU-13 · Agenda general del salón — S
-Vista de todas las citas de la sede filtrable por estilista y fecha.
+La misma vista de calendario de HU-08, con las citas de todos los estilistas y un filtro por estilista.

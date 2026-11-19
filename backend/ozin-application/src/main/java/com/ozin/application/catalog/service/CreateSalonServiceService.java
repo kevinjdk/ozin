@@ -19,7 +19,8 @@ public final class CreateSalonServiceService implements CreateSalonServiceUseCas
     @Override
     public SalonService create(Command command) {
         SalonService service = new SalonService(
-                SalonServiceId.newId(), command.name(), command.duration(), command.price(), true);
+                SalonServiceId.newId(), command.name(), command.description(), command.duration(), command.price(),
+                true);
         return unitOfWork.inTransaction(() -> {
             services.save(service);
             return service;

@@ -3,6 +3,7 @@ package com.ozin.infrastructure.staff.adapter.in.rest;
 import com.ozin.application.staff.port.in.AddTimeOffUseCase;
 import com.ozin.application.staff.port.in.CreateStylistUseCase;
 import com.ozin.application.staff.port.in.ListStylistsUseCase;
+import com.ozin.application.staff.port.in.RemoveTimeOffUseCase;
 import com.ozin.application.staff.port.in.UpdateStylistUseCase;
 import com.ozin.domain.branch.BranchId;
 import com.ozin.domain.catalog.SalonServiceId;
@@ -20,6 +21,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -49,15 +51,18 @@ class StylistController {
     private final CreateStylistUseCase createStylist;
     private final UpdateStylistUseCase updateStylist;
     private final AddTimeOffUseCase addTimeOff;
+    private final RemoveTimeOffUseCase removeTimeOff;
 
     StylistController(ListStylistsUseCase listStylists,
                       CreateStylistUseCase createStylist,
                       UpdateStylistUseCase updateStylist,
-                      AddTimeOffUseCase addTimeOff) {
+                      AddTimeOffUseCase addTimeOff,
+                      RemoveTimeOffUseCase removeTimeOff) {
         this.listStylists = listStylists;
         this.createStylist = createStylist;
         this.updateStylist = updateStylist;
         this.addTimeOff = addTimeOff;
+        this.removeTimeOff = removeTimeOff;
     }
 
     @GetMapping
@@ -97,6 +102,12 @@ class StylistController {
     StylistResponse addTimeOff(@PathVariable UUID id, @Valid @RequestBody AddTimeOffRequest request) {
         return StylistResponse.from(addTimeOff.addTimeOff(StylistId.of(id),
                 new TimeOff(new TimeSlot(request.start(), request.end()), request.reason())));
+    }
+
+    @DeleteMapping("/{id}/time-offs")
+    @Operation(summary = "Elimina la ausencia del estilista que empieza en el instante indicado")
+    StylistResponse removeTimeOff(@PathVariable UUID id, @RequestParam Instant start) {
+        return StylistResponse.from(removeTimeOff.removeTimeOff(StylistId.of(id), start));
     }
 
     private static Set<SalonServiceId> toServiceIds(Set<UUID> ids) {

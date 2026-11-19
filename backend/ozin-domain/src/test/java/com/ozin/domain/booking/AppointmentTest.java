@@ -30,33 +30,13 @@ class AppointmentTest {
     }
 
     @Nested
-    class Confirm {
-
-        @Test
-        void pendingAppointmentCanBeConfirmed() {
-            Appointment appointment = withStatus(AppointmentStatus.PENDING);
-
-            appointment.confirm();
-
-            assertThat(appointment.status()).isEqualTo(AppointmentStatus.CONFIRMED);
-        }
-
-        @ParameterizedTest
-        @EnumSource(value = AppointmentStatus.class, names = "PENDING", mode = EnumSource.Mode.EXCLUDE)
-        void onlyPendingAppointmentsCanBeConfirmed(AppointmentStatus status) {
-            assertThatThrownBy(() -> withStatus(status).confirm())
-                    .isInstanceOf(InvalidStateTransitionException.class);
-        }
-    }
-
-    @Nested
     class Cancel {
 
         @Test
-        void customerCanCancelWithAtLeast24HoursNotice() {
+        void customerCanCancelWithAtLeastOneHourNotice() {
             Appointment appointment = withStatus(AppointmentStatus.CONFIRMED);
 
-            appointment.cancel(CancellationActor.CUSTOMER, at("2026-11-08T10:00"), policy);
+            appointment.cancel(CancellationActor.CUSTOMER, at("2026-11-09T09:00"), policy);
 
             assertThat(appointment.status()).isEqualTo(AppointmentStatus.CANCELLED);
             assertThat(appointment.cancelledBy()).contains(CancellationActor.CUSTOMER);
@@ -64,18 +44,19 @@ class AppointmentTest {
         }
 
         @Test
-        void customerCannotCancelWithLessThan24HoursNotice() {
+        void customerCannotCancelWithLessThanOneHourNotice() {
             Appointment appointment = withStatus(AppointmentStatus.CONFIRMED);
 
-            assertThatThrownBy(() -> appointment.cancel(CancellationActor.CUSTOMER, at("2026-11-08T10:01"), policy))
+            assertThatThrownBy(() -> appointment.cancel(CancellationActor.CUSTOMER, at("2026-11-09T09:01"), policy))
                     .isInstanceOf(BusinessRuleViolationException.class)
+                    .hasMessageContaining("1 hora antes")
                     .extracting("code").isEqualTo("RN-07");
             assertThat(appointment.status()).isEqualTo(AppointmentStatus.CONFIRMED);
         }
 
         @Test
         void adminCanCancelAtAnyTime() {
-            Appointment appointment = withStatus(AppointmentStatus.PENDING);
+            Appointment appointment = withStatus(AppointmentStatus.CONFIRMED);
 
             appointment.cancel(CancellationActor.ADMIN, at("2026-11-09T09:55"), policy);
 
@@ -157,9 +138,12 @@ class AppointmentTest {
                     .isInstanceOf(InvalidStateTransitionException.class);
         }
 
-        @Test
-        void pendingAppointmentCannotBeCompleted() {
-            assertThatThrownBy(() -> withStatus(AppointmentStatus.PENDING).complete(at("2026-11-09T11:00")))
+        @ParameterizedTest
+        @EnumSource(value = AppointmentStatus.class, names = "CONFIRMED", mode = EnumSource.Mode.EXCLUDE)
+        void onlyConfirmedAppointmentsCanBeCompletedOrMarkedAsNoShow(AppointmentStatus status) {
+            assertThatThrownBy(() -> withStatus(status).complete(at("2026-11-09T11:00")))
+                    .isInstanceOf(InvalidStateTransitionException.class);
+            assertThatThrownBy(() -> withStatus(status).markNoShow(at("2026-11-09T11:00")))
                     .isInstanceOf(InvalidStateTransitionException.class);
         }
 

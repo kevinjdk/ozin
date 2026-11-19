@@ -10,6 +10,6 @@ public interface CreateSalonServiceUseCase {
 
     SalonService create(Command command);
 
-    record Command(String name, Duration duration, Money price) {
+    record Command(String name, String description, Duration duration, Money price) {
     }
 }

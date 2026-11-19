@@ -2,7 +2,7 @@
   <header class="page__header">
     <div>
       <h1>Estilistas</h1>
-      <p>Dar de baja a un estilista le quita el acceso, pero conserva sus citas.</p>
+      <p>Desactivar a un estilista le quita el acceso, pero conserva sus citas.</p>
     </div>
     <p-button label="Nuevo estilista" icon="pi pi-plus" (onClick)="openCreate()" />
   </header>
@@ -14,6 +14,7 @@
           <tr>
             <th>Nombre</th>
             <th>Servicios</th>
+            <th>Horario</th>
             <th>Estado</th>
             <th><span class="sr-only">Acciones</span></th>
           </tr>
@@ -22,19 +23,22 @@
           <tr>
             <td>{{ stylist.fullName }}</td>
             <td>{{ serviceNames(stylist) }}</td>
+            <td class="muted">{{ scheduleSummary(stylist) }}</td>
             <td>
-              <p-tag [value]="stylist.active ? 'Activo' : 'De baja'" [severity]="stylist.active ? 'success' : 'secondary'" />
+              <p-tag [value]="stylist.active ? 'Activo' : 'Inactivo'" [severity]="stylist.active ? 'success' : 'secondary'" />
             </td>
-            <td class="table-actions">
-              <p-button label="Ausencias" size="small" severity="secondary" [text]="true"
-                        [ariaLabel]="'Ausencias de ' + stylist.fullName" (onClick)="openTimeOff(stylist)" />
-              <p-button label="Editar" size="small" severity="secondary" [outlined]="true"
-                        [ariaLabel]="'Editar ' + stylist.fullName" (onClick)="openEdit(stylist)" />
+            <td>
+              <div class="table-actions">
+                <p-button label="Ausencias" size="small" severity="secondary" [outlined]="true"
+                          [ariaLabel]="'Ausencias de ' + stylist.fullName" (onClick)="openTimeOff(stylist)" />
+                <p-button label="Editar" size="small" severity="secondary" [outlined]="true"
+                          [ariaLabel]="'Editar ' + stylist.fullName" (onClick)="openEdit(stylist)" />
+              </div>
             </td>
           </tr>
         </ng-template>
         <ng-template #emptymessage>
-          <tr><td colspan="4" class="muted">Crea el primer estilista para poder recibir reservas.</td></tr>
+          <tr><td colspan="5" class="muted">Crea el primer estilista para poder recibir reservas.</td></tr>
         </ng-template>
       </p-table>
     </div>
@@ -49,7 +53,7 @@
 </div>
 
 <p-dialog [visible]="dialogOpen()" (visibleChange)="dialogOpen.set($event)" [modal]="true"
-          [header]="editing() ? 'Editar estilista' : 'Nuevo estilista'" [style]="{ width: 'min(34rem, 94vw)' }">
+          [header]="editing() ? 'Editar estilista' : 'Nuevo estilista'" [style]="{ width: 'min(36rem, 94vw)' }">
   <form class="form" [formGroup]="form" (ngSubmit)="save()" novalidate>
     <div class="field">
       <label for="stylist-name">Nombre completo</label>
@@ -83,21 +87,71 @@
                      optionValue="id" placeholder="Selecciona servicios" display="chip" [fluid]="true" appendTo="body" />
     </div>
 
-    <fieldset class="hours" formArrayName="workingHours">
+    <fieldset class="schedule">
       <legend>Horario semanal</legend>
-      @for (row of hours.controls; track row; let index = $index) {
-        <div class="hours__row" [formGroupName]="index">
-          <p-select formControlName="day" [options]="days" optionLabel="label" optionValue="value" appendTo="body"
-                    [ariaLabel]="'Día de la franja ' + (index + 1)" />
-          <input pInputText type="time" formControlName="start" [attr.aria-label]="'Inicio de la franja ' + (index + 1)" />
-          <input pInputText type="time" formControlName="end" [attr.aria-label]="'Fin de la franja ' + (index + 1)" />
-          <p-button icon="pi pi-times" severity="secondary" [text]="true"
-                    [ariaLabel]="'Quitar franja ' + (index + 1)" (onClick)="removeHours(index)" />
+
+      <div class="field">
+        <span class="schedule__label" id="work-days-label">Días que trabaja</span>
+        <div class="schedule__days" role="group" aria-labelledby="work-days-label">
+          @for (option of dayOptions; track option.value) {
+            <button type="button" class="day-toggle" [class.day-toggle--on]="workDays().includes(option.value)"
+                    [attr.aria-pressed]="workDays().includes(option.value)" [attr.aria-label]="option.long"
+                    (click)="toggleDay(option.value)">
+              {{ option.label }}
+            </button>
+          }
         </div>
-      } @empty {
-        <p class="muted hours__empty">Sin horario no recibirá reservas. Agrega una franja por cada tramo, por ejemplo mañana y tarde.</p>
+        <small class="field__hint">
+          @if (workDays().length === 0) {
+            Sin días de trabajo no recibirá reservas.
+          } @else if (daysOff().length > 0) {
+            Libre: {{ daysOff().join(', ') }}.
+          } @else {
+            Trabaja todos los días.
+          }
+        </small>
+      </div>
+
+      <div class="field">
+        <span class="schedule__label" id="schedule-mode-label">Horas</span>
+        <p-selectbutton [ngModel]="schedule().mode" (ngModelChange)="setMode($event)" [ngModelOptions]="{ standalone: true }"
+                        [options]="modeOptions" optionLabel="label" optionValue="value" [allowEmpty]="false"
+                        ariaLabelledBy="schedule-mode-label" styleClass="two-options" />
+        <small class="field__hint">
+          @if (schedule().mode === 'fixed') {
+            Un mismo horario para entre semana y otro para el fin de semana.
+          } @else {
+            Parte del horario fijo: cambia solo los días que lo necesiten.
+          }
+        </small>
+      </div>
+
+      <div class="schedule__blocks">
+        @if (schedule().mode === 'fixed') {
+          @if (worksWeekdays()) {
+            <app-day-hours-editor label="Entre semana (lunes a viernes)" [hours]="schedule().weekdays"
+                                  (hoursChange)="setFixedHours('weekdays', $event)" />
+          }
+          @if (worksWeekend()) {
+            <app-day-hours-editor label="Fin de semana (sábado y domingo)" [hours]="schedule().weekend"
+                                  (hoursChange)="setFixedHours('weekend', $event)" />
+          }
+        } @else {
+          @for (entry of orderedWorkDays(); track entry.day) {
+            <app-day-hours-editor [label]="entry.long" [hours]="schedule().days[entry.day]"
+                                  (hoursChange)="setDayHours(entry.day, $event)" />
+          }
+        }
+        @if (workDays().length === 0) {
+          <p class="muted schedule__empty">Elige al menos un día de trabajo.</p>
+        }
+      </div>
+
+      <p-message severity="info" size="small" icon="pi pi-clock">{{ breakMessage() }}</p-message>
+      @for (problem of scheduleErrors(); track problem) {
+        <small class="field__error" role="alert">{{ problem }}</small>
       }
-      <p-button label="Agregar franja" icon="pi pi-plus" size="small" severity="secondary" [outlined]="true" (onClick)="addHours()" />
+      <small class="field__hint">Cambiar el horario no cancela las citas ya reservadas: revísalas en la agenda.</small>
     </fieldset>
 
     @if (editing()) {
@@ -115,40 +169,72 @@
 </p-dialog>
 
 <p-dialog [visible]="timeOffOpen()" (visibleChange)="$event ? null : timeOffFor.set(null)" [modal]="true"
-          [header]="'Ausencias de ' + (timeOffFor()?.fullName ?? '')" [style]="{ width: 'min(30rem, 94vw)' }">
+          [header]="'Ausencias de ' + (timeOffFor()?.fullName ?? '')" [style]="{ width: 'min(32rem, 94vw)' }">
   @if (timeOffFor(); as stylist) {
-    @if (stylist.timeOffs.length > 0) {
-      <ul class="time-offs">
-        @for (off of stylist.timeOffs; track off.start) {
-          <li>
-            <span>{{ timeOffRange(off.start, off.end) }}</span>
-            @if (off.reason) {
-              <small class="muted">{{ off.reason }}</small>
-            }
-          </li>
-        }
-      </ul>
-    }
-    <p class="muted time-offs__note">Registrar una ausencia bloquea nuevas reservas, pero no cancela las citas que ya existan: revísalas en la agenda.</p>
-    <form class="form" [formGroup]="timeOffForm" (ngSubmit)="saveTimeOff()" novalidate>
-      <div class="field">
-        <label for="off-start">Desde</label>
-        <input pInputText id="off-start" type="datetime-local" formControlName="start" />
-        @if (timeOffForm.controls.start.touched && timeOffForm.controls.start.invalid) {
-          <small class="field__error">Indica el inicio.</small>
-        }
-      </div>
-      <div class="field">
-        <label for="off-end">Hasta</label>
-        <input pInputText id="off-end" type="datetime-local" formControlName="end" />
-        @if (timeOffForm.controls.end.touched && timeOffForm.controls.end.invalid) {
-          <small class="field__error">Indica el fin.</small>
-        }
-      </div>
+    <section aria-labelledby="time-offs-title">
+      <h2 id="time-offs-title" class="time-offs__title">Próximas ausencias</h2>
+      @if (upcomingTimeOffs().length > 0) {
+        <ul class="time-offs">
+          @for (off of upcomingTimeOffs(); track off.start) {
+            <li>
+              <div class="time-offs__text">
+                <span>{{ describe(off) }}</span>
+                @if (off.reason) {
+                  <small class="muted">{{ off.reason }}</small>
+                }
+              </div>
+              <p-button icon="pi pi-trash" severity="danger" [text]="true" size="small"
+                        [ariaLabel]="'Eliminar ausencia: ' + describe(off)" (onClick)="removeTimeOff(off)" />
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="muted time-offs__none">No tiene ausencias registradas.</p>
+      }
+    </section>
+
+    <form class="form time-off-form" [formGroup]="timeOffForm" (ngSubmit)="saveTimeOff()" novalidate>
+      <h2 class="time-offs__title">Registrar ausencia</h2>
+      <p-selectbutton formControlName="kind" [options]="timeOffKinds" optionLabel="label" optionValue="value"
+                      [allowEmpty]="false" ariaLabel="Tipo de ausencia" styleClass="two-options" />
+
+      @if (timeOffKind() === 'days') {
+        <div class="time-off-form__pair">
+          <div class="field">
+            <label for="off-from">Desde</label>
+            <input pInputText id="off-from" type="date" formControlName="from" (change)="syncLastDay()" />
+          </div>
+          <div class="field">
+            <label for="off-to">Hasta</label>
+            <input pInputText id="off-to" type="date" formControlName="to" [min]="timeOffForm.controls.from.value" />
+          </div>
+        </div>
+        <small class="field__hint">Para un solo día, deja la misma fecha en ambos campos.</small>
+      } @else {
+        <div class="field">
+          <label for="off-date">Día</label>
+          <input pInputText id="off-date" type="date" formControlName="date" />
+        </div>
+        <div class="time-off-form__pair">
+          <div class="field">
+            <label for="off-start">Desde las</label>
+            <input pInputText id="off-start" type="time" formControlName="start" />
+          </div>
+          <div class="field">
+            <label for="off-end">Hasta las</label>
+            <input pInputText id="off-end" type="time" formControlName="end" />
+          </div>
+        </div>
+      }
+
       <div class="field">
         <label for="off-reason">Motivo (opcional)</label>
-        <input pInputText id="off-reason" formControlName="reason" />
+        <input pInputText id="off-reason" formControlName="reason" placeholder="Vacaciones, cita médica..." />
       </div>
+      @if (timeOffError()) {
+        <small class="field__error" role="alert">{{ timeOffError() }}</small>
+      }
+      <p class="muted time-offs__note">Registrar una ausencia bloquea nuevas reservas, pero no cancela las citas que ya existan: revísalas en la agenda.</p>
       <div class="form__actions">
         <p-button label="Cerrar" severity="secondary" [text]="true" (onClick)="timeOffFor.set(null)" />
         <p-button type="submit" label="Registrar ausencia" [loading]="saving()" />

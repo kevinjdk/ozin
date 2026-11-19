@@ -2,7 +2,7 @@
 
 export type Role = 'ADMIN' | 'STYLIST' | 'CUSTOMER';
 
-export type AppointmentStatus = 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
+export type AppointmentStatus = 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
 
 export type DayOfWeek =
   | 'MONDAY'
@@ -30,6 +30,8 @@ export interface Branch {
 export interface SalonService {
   id: string;
   name: string;
+  /** Vacía cuando el servicio no tiene descripción. */
+  description: string;
   durationMinutes: number;
   price: number;
   currency: string;
@@ -38,6 +40,7 @@ export interface SalonService {
 
 export interface SalonServiceInput {
   name: string;
+  description: string;
   durationMinutes: number;
   price: number;
 }

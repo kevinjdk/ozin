@@ -3,6 +3,7 @@ package com.ozin.domain.staff;
 import com.ozin.domain.branch.BranchId;
 import com.ozin.domain.catalog.SalonServiceId;
 import com.ozin.domain.shared.DomainValidationException;
+import com.ozin.domain.shared.ResourceNotFoundException;
 import com.ozin.domain.shared.TimeSlot;
 import org.junit.jupiter.api.Test;
 
@@ -59,6 +60,29 @@ class StylistTest {
 
         assertThatThrownBy(() -> stylist.addTimeOff(timeOff("2026-11-09T16:00:00Z", "2026-11-09T18:00:00Z")))
                 .isInstanceOf(DomainValidationException.class);
+        assertThat(stylist.timeOffs()).hasSize(1);
+    }
+
+    @Test
+    void removeTimeOffDropsOnlyTheOneStartingAtThatInstant() {
+        Stylist stylist = stylist();
+        TimeOff morning = timeOff("2026-11-09T14:00:00Z", "2026-11-09T16:00:00Z");
+        TimeOff nextWeek = timeOff("2026-11-16T05:00:00Z", "2026-11-19T05:00:00Z");
+        stylist.addTimeOff(morning);
+        stylist.addTimeOff(nextWeek);
+
+        stylist.removeTimeOff(Instant.parse("2026-11-09T14:00:00Z"));
+
+        assertThat(stylist.timeOffs()).containsExactly(nextWeek);
+    }
+
+    @Test
+    void removeTimeOffFailsWhenThereIsNoneStartingAtThatInstant() {
+        Stylist stylist = stylist();
+        stylist.addTimeOff(timeOff("2026-11-09T14:00:00Z", "2026-11-09T16:00:00Z"));
+
+        assertThatThrownBy(() -> stylist.removeTimeOff(Instant.parse("2026-11-09T15:00:00Z")))
+                .isInstanceOf(ResourceNotFoundException.class);
         assertThat(stylist.timeOffs()).hasSize(1);
     }
 }
