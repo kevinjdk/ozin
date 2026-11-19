@@ -35,7 +35,7 @@ erDiagram
     BRANCH { uuid id string name string address string timeZone boolean active }
     CUSTOMER { uuid id string fullName string email string phone }
     STYLIST { uuid id uuid branchId string fullName boolean active }
-    SALON_SERVICE { uuid id string name int durationMinutes decimal price string currency boolean active }
+    SALON_SERVICE { uuid id string name string description int durationMinutes decimal price string currency boolean active }
     WORKING_HOURS { uuid stylistId string dayOfWeek time startTime time endTime }
     TIME_OFF { uuid stylistId timestamptz startsAt timestamptz endsAt string reason }
     APPOINTMENT { uuid id uuid customerId uuid stylistId uuid serviceId uuid branchId timestamptz startsAt timestamptz endsAt decimal price string currency string status string cancelledBy bigint version }
@@ -60,16 +60,15 @@ Son inmutables (`record` de Java) y se validan al construirse: no puede existir 
 
 ```mermaid
 stateDiagram-v2
-    [*] --> PENDING : reservar
-    PENDING --> CONFIRMED : confirmar
-    PENDING --> CANCELLED : cancelar
+    [*] --> CONFIRMED : reservar
     CONFIRMED --> CANCELLED : cancelar
-    CONFIRMED --> COMPLETED : completar
+    CONFIRMED --> COMPLETED : asistió
     CONFIRMED --> NO_SHOW : no asistió
     COMPLETED --> [*]
     CANCELLED --> [*]
     NO_SHOW --> [*]
 ```
 
-Las transiciones se implementan como métodos de la entidad `Appointment` (`confirm()`, `cancel()`,
-`complete()`, `markNoShow()`); el modelo es **rico**, no anémico.
+La cita nace confirmada: la reserva ya valida que el horario esté libre, así que un paso de
+aprobación no aportaría nada. Las transiciones se implementan como métodos de la entidad
+`Appointment` (`cancel()`, `complete()`, `markNoShow()`); el modelo es **rico**, no anémico.
