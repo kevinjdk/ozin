@@ -12,14 +12,14 @@ export default defineConfig({
   workers: 1,
   reporter: [['list']],
   use: {
-    baseURL: 'http://localhost:4200',
+    baseURL: 'http://localhost:4300',
     locale: 'es-EC',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
   webServer: {
     command: 'npm start',
-    url: 'http://localhost:4200',
+    url: 'http://localhost:4300',
     reuseExistingServer: true,
     timeout: 240_000,
   },

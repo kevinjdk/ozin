@@ -72,7 +72,7 @@ cd backend
 ./mvnw -DskipTests package
 java -jar ozin-bootstrap/target/ozin-api.jar
 
-# 3. Frontend  →  http://localhost:4200
+# 3. Frontend  →  http://localhost:4300
 cd frontend
 npm install
 npm start
